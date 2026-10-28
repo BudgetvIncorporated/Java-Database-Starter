@@ -15,7 +15,16 @@ mvn compile exec:java
 
 The app creates `database.db` if it does not exist, then applies `schema.sql`
 and `seed.sql`. The seed uses `INSERT OR IGNORE`, so restarting the app does
-not add duplicate sample rows.
+not add duplicate sample rows. When it starts, a console menu lets you browse
+games by title, search titles, filter by genre, open a saved game page in your
+browser, and view a games-per-developer report. If a browser is unavailable,
+the app prints the saved page instead.
+
+Game search and genre filtering use prepared SQL statements. The catalog query
+joins games, developers, and genres through the `game_genres` table; the
+developer report uses `LEFT JOIN`, `GROUP BY`, and `COUNT` so developers with
+no games would still appear. Browse/search results are sorted by title in Java.
+Invalid menu choices and database errors are reported without a stack trace.
 
 ## Import the SQL files yourself
 
