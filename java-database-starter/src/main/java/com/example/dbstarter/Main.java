@@ -41,8 +41,9 @@ public final class Main {
                     case 2 -> searchGames(input, catalog);
                     case 3 -> filterByGenre(input, catalog);
                     case 4 -> openGame(input, catalog);
-                    case 5 -> showDeveloperReport(catalog);
-                    default -> System.out.println("Please choose a number from 0 to 5.");
+                    case 5 -> showUserReport(catalog);
+                    case 6 -> showUserLibrary(input, catalog);
+                    default -> System.out.println("Please choose a number from 0 to 6.");
                 }
             } catch (SQLException exception) {
                 System.err.println("Database error. You can try another menu option: "
@@ -58,7 +59,8 @@ public final class Main {
         System.out.println("2. Search games by title");
         System.out.println("3. Filter games by genre");
         System.out.println("4. Open a game's saved page");
-        System.out.println("5. Games per developer report");
+        System.out.println("5. User game activity report");
+        System.out.println("6. View a user's game library");
         System.out.println("0. Exit");
     }
 
@@ -131,17 +133,55 @@ public final class Main {
         }
     }
 
-    private static void showDeveloperReport(GameCatalogDao catalog) throws SQLException {
-        List<DeveloperGameCount> counts = catalog.countGamesPerDeveloper();
-        if (counts.isEmpty()) {
-            System.out.println("No developers are available.");
+    private static void showUserReport(GameCatalogDao catalog) throws SQLException {
+        List<UserGameSummary> summaries = catalog.summarizeUsers();
+        if (summaries.isEmpty()) {
+            System.out.println("No users are available.");
             return;
         }
-        System.out.println("Games per developer:");
-        System.out.printf("%-30s %s%n", "Developer", "Games");
-        System.out.println("-".repeat(39));
-        for (DeveloperGameCount count : counts) {
-            System.out.printf("%-30s %d%n", count.developerName(), count.gameCount());
+        System.out.println("Game activity per user:");
+        System.out.printf("%-18s %-8s %-12s %s%n",
+                "Username", "Games", "Avg rating", "Play count");
+        System.out.println("-".repeat(54));
+        for (UserGameSummary summary : summaries) {
+            System.out.printf("%-18s %-8d %-12.1f %d%n",
+                    summary.username(), summary.gameCount(),
+                    summary.averageRating(), summary.totalPlayCount());
+        }
+    }
+
+    private static void showUserLibrary(Scanner input, GameCatalogDao catalog)
+            throws SQLException {
+        List<User> users = catalog.findAllUsers();
+        if (users.isEmpty()) {
+            System.out.println("No users are available.");
+            return;
+        }
+
+        System.out.println("Sample users:");
+        for (User user : users) {
+            System.out.println("- " + user.username());
+        }
+        String username = readLine(input, "Enter a username: ");
+        if (username == null || username.isBlank()) {
+            return;
+        }
+
+        List<UserGame> userGames = catalog.findGamesForUser(username.trim());
+        if (userGames.isEmpty()) {
+            System.out.println("No saved games found for that username.");
+            return;
+        }
+
+        System.out.printf("%-34s %-18s %-12s %-8s %s%n",
+                "Title", "Genre", "Published", "Rating", "Plays");
+        System.out.println("-".repeat(82));
+        for (UserGame userGame : userGames) {
+            String rating = userGame.rating() == null ? "—" : userGame.rating().toString();
+            Game game = userGame.game();
+            System.out.printf("%-34s %-18s %-12s %-8s %d%n",
+                    shorten(game.title(), 34), shorten(game.genreName(), 18),
+                    game.releaseDate(), rating, userGame.playCount());
         }
     }
 
@@ -156,13 +196,13 @@ public final class Main {
         sortedGames.sort(Comparator.comparing(Game::title, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(Game::title));
 
-        System.out.printf("%-4s %-34s %-12s %-24s %s%n",
-                "ID", "Title", "Published", "Developer", "Genres");
-        System.out.println("-".repeat(112));
+        System.out.printf("%-4s %-42s %-12s %s%n",
+                "ID", "Title", "Released", "Genre");
+        System.out.println("-".repeat(82));
         for (Game game : sortedGames) {
-            System.out.printf("%-4d %-34s %-12s %-24s %s%n",
-                    game.id(), shorten(game.title(), 34), game.publishedOn(),
-                    shorten(game.developerName(), 24), game.genres());
+            System.out.printf("%-4d %-42s %-12s %s%n",
+                    game.id(), shorten(game.title(), 42), game.releaseDate(),
+                    game.genreName());
         }
     }
 

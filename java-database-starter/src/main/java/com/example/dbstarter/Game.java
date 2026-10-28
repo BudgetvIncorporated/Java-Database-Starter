@@ -1,5 +1,4 @@
 package com.example.dbstarter;
 
-public record Game(int id, String title, String url, String publishedOn,
-                   String developerName, String genres) {
+public record Game(int id, String title, String url, String releaseDate, String genreName) {
 }
