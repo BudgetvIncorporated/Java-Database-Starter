@@ -1,9 +1,11 @@
-# Java Database Starter
+# Game Library
 
-A small Java 17 project that connects to a local SQLite database with JDBC.
-The database file is created automatically the first time the program runs.
+A Java and SQLite catalog for storing game titles, publisher/developer links,
+release dates, and genres. Selecting a game can open its saved web page. The
+sample links go to official game pages or store listings; they do not promise
+that the game can be played inside this app.
 
-## Run it
+## Run the Java starter
 
 From this directory, run:
 
@@ -11,18 +13,34 @@ From this directory, run:
 mvn compile exec:java
 ```
 
-Maven downloads the SQLite JDBC driver and the project plugins on the first run.
+The app creates `database.db` if it does not exist, then applies `schema.sql`
+and `seed.sql`. The seed uses `INSERT OR IGNORE`, so restarting the app does
+not add duplicate sample rows.
 
-## Add tables
+## Import the SQL files yourself
 
-Edit `src/main/resources/schema.sql`. Add one or more SQLite `CREATE TABLE`
-statements, ending each statement with a semicolon. They are applied each time
-the program starts, so use `CREATE TABLE IF NOT EXISTS` to keep existing tables.
+Use a SQLite tool such as DB Browser for SQLite:
 
-The database file is `database.db` in this directory. It is ignored by Git.
+1. Create or open `database.db`.
+2. Open the **Execute SQL** view and run `src/main/resources/schema.sql`.
+3. Run `src/main/resources/seed.sql`.
+4. Browse the `games`, `developers`, `genres`, and `game_genres` tables to
+   confirm the data loaded.
 
-## Java files
+Run `schema.sql` first because `seed.sql` depends on its tables. To start over,
+close the database tool, delete `database.db`, create a fresh database, and run
+the two files in that order.
 
-- `Database.java` opens the JDBC connection.
-- `SchemaInitializer.java` applies the SQL in `schema.sql`.
-- `Main.java` starts the program and closes the connection when it finishes.
+## Project order and deliverables
+
+See `PROJECT_PLAN.md` for the proposed ER diagram, database questions, and
+milestone-by-milestone steps from the assignment.
+
+## Where things live
+
+- `src/main/resources/schema.sql` defines the tables and relationships.
+- `src/main/resources/seed.sql` adds sample data: 20 games, developers,
+  genres, and game-to-genre links.
+- `Database.java` opens SQLite and enables foreign-key checks.
+- `SchemaInitializer.java` applies both SQL files.
+- `Main.java` starts the program and closes the connection.

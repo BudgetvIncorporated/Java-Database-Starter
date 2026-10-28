@@ -13,18 +13,24 @@ public final class SchemaInitializer {
     }
 
     public static void apply(Connection connection) throws IOException, SQLException {
-        try (InputStream input = SchemaInitializer.class.getResourceAsStream("/schema.sql")) {
+        applyResource(connection, "/schema.sql");
+        applyResource(connection, "/seed.sql");
+    }
+
+    private static void applyResource(Connection connection, String resourceName)
+            throws IOException, SQLException {
+        try (InputStream input = SchemaInitializer.class.getResourceAsStream(resourceName)) {
             if (input == null) {
-                throw new IOException("Could not find schema.sql on the classpath.");
+                throw new IOException("Could not find " + resourceName + " on the classpath.");
             }
 
             String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-            for (String part : script.split(";")) {
-                String sql = part.lines()
-                        .filter(line -> !line.stripLeading().startsWith("--"))
-                        .collect(Collectors.joining("\n"))
-                        .trim();
+            String uncommentedScript = script.lines()
+                    .filter(line -> !line.stripLeading().startsWith("--"))
+                    .collect(Collectors.joining("\n"));
 
+            for (String part : uncommentedScript.split(";")) {
+                String sql = part.trim();
                 if (!sql.isEmpty()) {
                     try (Statement statement = connection.createStatement()) {
                         statement.execute(sql);
