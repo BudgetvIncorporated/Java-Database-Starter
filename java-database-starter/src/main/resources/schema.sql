@@ -1,0 +1,2 @@
+-- Add your CREATE TABLE statements here.
+-- End each statement with a semicolon.

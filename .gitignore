@@ -5,6 +5,8 @@ dist
 tmp
 out-tsc
 *.tsbuildinfo
+**/target/
+java-database-starter/database.db*
 .expo
 .expo-shared
 .next
