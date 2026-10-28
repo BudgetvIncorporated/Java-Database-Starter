@@ -1,4 +1,4 @@
--- Game Library schema
+7rwa-- Game Library schema
 -- Run this file before seed.sql.
 
 PRAGMA foreign_keys = ON;
