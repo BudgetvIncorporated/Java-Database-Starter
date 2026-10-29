@@ -9,9 +9,13 @@ import java.util.List;
 
 public final class GameCatalogDao {
     private static final String GAME_SELECT = """
-            SELECT g.game_id, g.title, g.launch_url, g.release_date, ge.genre_name
+            SELECT g.game_id, g.title, g.game_url, g.published_on, g.developer_id,
+                   d.name AS developer_name,
+                   COALESCE(GROUP_CONCAT(DISTINCT ge.genre_name), '') AS genre_names
             FROM games AS g
-            JOIN genres AS ge ON ge.genre_id = g.genre_id
+            JOIN developers AS d ON d.developer_id = g.developer_id
+            LEFT JOIN game_genres AS gg ON gg.game_id = g.game_id
+            LEFT JOIN genres AS ge ON ge.genre_id = gg.genre_id
             """;
 
     private final Connection connection;
@@ -21,24 +25,34 @@ public final class GameCatalogDao {
     }
 
     public List<Game> findAllGames() throws SQLException {
-        return queryGames(GAME_SELECT, null);
+        return queryGames(GAME_SELECT + """
+                GROUP BY g.game_id, d.name
+                """, null);
     }
 
     public List<Game> searchGames(String titleText) throws SQLException {
         return queryGames(GAME_SELECT + """
                 WHERE instr(lower(g.title), lower(?)) > 0
+                GROUP BY g.game_id, d.name
                 """, titleText);
     }
 
     public List<Game> findGamesByGenre(String genreName) throws SQLException {
         return queryGames(GAME_SELECT + """
-                WHERE lower(ge.genre_name) = lower(?)
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM game_genres AS filter_gg
+                    JOIN genres AS filter_ge ON filter_ge.genre_id = filter_gg.genre_id
+                    WHERE filter_gg.game_id = g.game_id
+                      AND lower(filter_ge.genre_name) = lower(?)
+                )
+                GROUP BY g.game_id, d.name
                 """, genreName);
     }
 
     public List<Genre> findAllGenres() throws SQLException {
         String sql = """
-                SELECT genre_id, genre_name
+                SELECT genre_id, genre_name AS name
                 FROM genres
                 ORDER BY genre_name COLLATE NOCASE
                 """;
@@ -48,7 +62,7 @@ public final class GameCatalogDao {
             while (resultSet.next()) {
                 genres.add(new Genre(
                         resultSet.getInt("genre_id"),
-                        resultSet.getString("genre_name")));
+                        resultSet.getString("name")));
             }
         }
         return genres;
@@ -99,16 +113,42 @@ public final class GameCatalogDao {
         return summaries;
     }
 
+    public List<DeveloperGameCount> countGamesPerDeveloper() throws SQLException {
+        String sql = """
+                SELECT d.name AS developer_name, COUNT(g.game_id) AS game_count
+                FROM developers AS d
+                LEFT JOIN games AS g ON g.developer_id = d.developer_id
+                GROUP BY d.developer_id, d.name
+                ORDER BY game_count DESC, d.name COLLATE NOCASE
+                """;
+        List<DeveloperGameCount> counts = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                counts.add(new DeveloperGameCount(
+                        resultSet.getString("developer_name"),
+                        resultSet.getInt("game_count")));
+            }
+        }
+        return counts;
+    }
+
     public List<UserGame> findGamesForUser(String username) throws SQLException {
         String sql = """
                 SELECT u.user_id, u.username, u.email,
-                       g.game_id, g.title, g.launch_url, g.release_date, ge.genre_name,
+                       g.game_id, g.title, g.game_url, g.published_on, g.developer_id,
+                       d.name AS developer_name,
+                       COALESCE(GROUP_CONCAT(DISTINCT ge.genre_name), '') AS genre_names,
                        ug.rating, ug.play_count
                 FROM users AS u
                 JOIN user_games AS ug ON ug.user_id = u.user_id
                 JOIN games AS g ON g.game_id = ug.game_id
-                JOIN genres AS ge ON ge.genre_id = g.genre_id
+                JOIN developers AS d ON d.developer_id = g.developer_id
+                LEFT JOIN game_genres AS gg ON gg.game_id = g.game_id
+                LEFT JOIN genres AS ge ON ge.genre_id = gg.genre_id
                 WHERE lower(u.username) = lower(?)
+                GROUP BY u.user_id, u.username, u.email, g.game_id, d.name,
+                         ug.rating, ug.play_count
                 ORDER BY g.title COLLATE NOCASE
                 """;
         List<UserGame> userGames = new ArrayList<>();
@@ -125,9 +165,11 @@ public final class GameCatalogDao {
                     Game game = new Game(
                             resultSet.getInt("game_id"),
                             resultSet.getString("title"),
-                            resultSet.getString("launch_url"),
-                            resultSet.getString("release_date"),
-                            resultSet.getString("genre_name"));
+                            resultSet.getString("game_url"),
+                            resultSet.getString("published_on"),
+                            resultSet.getInt("developer_id"),
+                            resultSet.getString("developer_name"),
+                            resultSet.getString("genre_names"));
                     userGames.add(new UserGame(
                             user,
                             game,
@@ -150,9 +192,11 @@ public final class GameCatalogDao {
                     games.add(new Game(
                             resultSet.getInt("game_id"),
                             resultSet.getString("title"),
-                            resultSet.getString("launch_url"),
-                            resultSet.getString("release_date"),
-                            resultSet.getString("genre_name")));
+                            resultSet.getString("game_url"),
+                            resultSet.getString("published_on"),
+                            resultSet.getInt("developer_id"),
+                            resultSet.getString("developer_name"),
+                            resultSet.getString("genre_names")));
                 }
             }
         }

@@ -11,12 +11,15 @@ games inside this project is not part of this scope.
 
 ```mermaid
 erDiagram
-    GENRE ||--o{ GAMES : classifies
+    DEVELOPERS ||--o{ GAMES : develops
+    GAMES ||--o{ GAME_GENRES : has
+    GENRES ||--o{ GAME_GENRES : classifies
     USERS ||--o{ USERGAMES : saves
     GAMES ||--o{ USERGAMES : appears_in
 ```
 
-- Each game has one genre; one genre can be assigned to many games.
+- Each game has one developer; one developer can be connected to many games.
+- Games and genres have a many-to-many relationship through `game_genres`.
 - Users and games have a many-to-many relationship. `user_games` is the
   junction table: a user can save many games, and a game can appear in many
   users' libraries.
@@ -28,11 +31,12 @@ erDiagram
 
 ### Why this is normalized
 
-Genre names are stored once in `genres`, and games point to them with
-`genre_id`. Users and games are stored separately and connected through
-`user_games`. The rating and play count describe one user's relationship with
-one game, so those values belong in `user_games`, not directly in `games` or
-`users`. No intentional denormalization is planned.
+Developer names are stored once in `developers`. Genre names are stored once
+in `genres`, and `game_genres` connects them to games. Users and games are
+stored separately and connected through `user_games`. The rating and play
+count describe one user's relationship with one game, so those values belong
+in `user_games`, not directly in `games` or `users`. No intentional
+denormalization is planned.
 
 ## Possible features
 
@@ -41,11 +45,11 @@ one game, so those values belong in `user_games`, not directly in `games` or
 3. Filter the catalog by genre.
 4. Open a selected game's saved URL.
 5. View one user's saved games, ratings, and play counts.
-6. Add, edit, and delete games and users.
+6. Add, edit, and delete games and developers.
 
-The current console menu already covers browsing, searching, genre filtering,
-opening links, and the user activity report. The later Java database-layer
-milestone can add CRUD features.
+The console menu covers browsing, searching, genre filtering, opening links,
+user libraries, and reports. It also supports full CRUD for games and
+developers.
 
 ## Questions the database can answer
 
@@ -58,18 +62,23 @@ Example SQL answers:
 
 ```sql
 -- 1. Games in the Puzzle genre.
-SELECT g.title, g.release_date
+SELECT g.title, g.published_on, d.name AS developer
 FROM games AS g
-JOIN genres AS ge ON ge.genre_id = g.genre_id
+JOIN developers AS d ON d.developer_id = g.developer_id
+JOIN game_genres AS gg ON gg.game_id = g.game_id
+JOIN genres AS ge ON ge.genre_id = gg.genre_id
 WHERE ge.genre_name = 'Puzzle'
 ORDER BY g.title;
 
 -- 2. One user's saved games (joins four tables).
-SELECT u.username, g.title, ge.genre_name, ug.rating, ug.play_count
+SELECT u.username, g.title, ge.genre_name, d.name AS developer,
+       ug.rating, ug.play_count
 FROM users AS u
 JOIN user_games AS ug ON ug.user_id = u.user_id
 JOIN games AS g ON g.game_id = ug.game_id
-JOIN genres AS ge ON ge.genre_id = g.genre_id
+JOIN developers AS d ON d.developer_id = g.developer_id
+JOIN game_genres AS gg ON gg.game_id = g.game_id
+JOIN genres AS ge ON ge.genre_id = gg.genre_id
 WHERE u.username = 'player01'
 ORDER BY g.title;
 
@@ -105,16 +114,16 @@ the loaded game list in Java rather than relying only on SQL `ORDER BY`.
 ### Week 2 — Data model
 
 - Review this ER diagram with your teacher and make any requested changes.
-- Understand how the four tables and their keys relate.
+- Understand how the tables and their keys relate.
 - Run `schema.sql` first, then `seed.sql`, and inspect the tables in SQLite.
 - Write a short explanation of the normalization choices above.
 - Get teacher approval before building more Java features.
 
 ### Week 3 — Database layer
 
-- Create Java models for `Game`, `Genre`, `User`, and `UserGame`.
+- Create Java models for `Game`, `Developer`, `Genre`, `User`, and `UserGame`.
 - Keep database code in DAO classes rather than mixing it into the menu.
-- Add and test full CRUD for at least two entities.
+- Add and test full CRUD for games and developers.
 - Use `PreparedStatement` for every value supplied by a user.
 
 ### Weeks 4–5 — Application

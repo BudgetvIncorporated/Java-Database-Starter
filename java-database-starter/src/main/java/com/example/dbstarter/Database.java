@@ -6,13 +6,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public final class Database {
-    private static final String URL = "jdbc:sqlite:game-library.db";
-
     private Database() {
     }
 
     public static Connection connect() throws SQLException {
-        Connection connection = DriverManager.getConnection(URL);
+        String databasePath = System.getProperty("game.catalog.db", "game-library.db");
+        Connection connection = DriverManager.getConnection("jdbc:sqlite:" + databasePath);
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys = ON");
             return connection;
