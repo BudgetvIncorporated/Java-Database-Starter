@@ -1,1 +1,1 @@
-- [Game catalog scope](game-library-scope.md) — The assignment project is a Java/SQLite game catalog; whether it will host playable games is undecided.
+- [Game library schema scope](game-library-scope.md) — Keep the approved model to Games, Genres, Users, and UserGames unless the user or teacher changes it.

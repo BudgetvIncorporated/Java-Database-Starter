@@ -1,24 +1,6 @@
--- Sample data for the game library.
--- Usernames and emails are fictional. Game links open official or store pages.
-
-INSERT OR IGNORE INTO developers (developer_id, name, website_url) VALUES
-    (1, 'Mojang Studios', 'https://www.minecraft.net/'),
-    (2, 'ConcernedApe', 'https://www.stardewvalley.net/'),
-    (3, 'Re-Logic', 'https://terraria.org/'),
-    (4, 'Team Cherry', 'https://www.teamcherry.com.au/'),
-    (5, 'Maddy Makes Games', 'https://www.celestegame.com/'),
-    (6, 'Valve', 'https://www.valvesoftware.com/'),
-    (7, 'CD Projekt Red', 'https://www.cdprojektred.com/'),
-    (8, 'FromSoftware', 'https://www.fromsoftware.jp/ww/'),
-    (9, 'Supergiant Games', 'https://www.supergiantgames.com/'),
-    (10, 'Innersloth', 'https://www.innersloth.com/'),
-    (11, 'Mega Crit', 'https://www.megacrit.com/'),
-    (12, 'id Software', 'https://www.idsoftware.com/'),
-    (13, 'Respawn Entertainment', 'https://www.respawn.com/'),
-    (14, 'HoYoverse', 'https://www.hoyoverse.com/'),
-    (15, 'Larian Studios', 'https://larian.com/'),
-    (16, 'Nintendo EPD', 'https://www.nintendo.com/'),
-    (17, 'Psyonix', 'https://www.psyonix.com/');
+-- Example records for the four-table game library.
+-- Usernames and email addresses are fictional. Links open game/store pages.
+-- Run schema.sql before this file.
 
 INSERT OR IGNORE INTO genres (genre_id, genre_name) VALUES
     (1, 'Action'),
@@ -35,9 +17,7 @@ INSERT OR IGNORE INTO genres (genre_id, genre_name) VALUES
     (12, 'Sports'),
     (13, 'Strategy'),
     (14, 'Survival'),
-    (15, 'Racing'),
-    (16, 'Open World'),
-    (17, 'Simulation');
+    (15, 'Racing');
 
 INSERT OR IGNORE INTO users (user_id, username, email) VALUES
     (1, 'player01', 'player01@example.com'),
@@ -62,53 +42,29 @@ INSERT OR IGNORE INTO users (user_id, username, email) VALUES
     (20, 'player20', 'player20@example.com');
 
 INSERT OR IGNORE INTO games
-    (game_id, title, game_url, published_on, developer_id) VALUES
-    (1, 'Minecraft', 'https://www.minecraft.net/en-us', '2011-11-18', 1),
-    (2, 'Stardew Valley', 'https://www.stardewvalley.net/', '2016-02-26', 2),
-    (3, 'Terraria', 'https://terraria.org/', '2011-05-16', 3),
-    (4, 'Hollow Knight', 'https://store.steampowered.com/app/367520/Hollow_Knight/', '2017-02-24', 4),
-    (5, 'Celeste', 'https://store.steampowered.com/app/504230/Celeste/', '2018-01-25', 5),
-    (6, 'Portal', 'https://store.steampowered.com/app/400/Portal/', '2007-10-10', 6),
-    (7, 'Portal 2', 'https://store.steampowered.com/app/620/Portal_2/', '2011-04-18', 6),
-    (8, 'The Witcher 3: Wild Hunt', 'https://store.steampowered.com/app/292030/The_Witcher_3_Wild_Hunt/', '2015-05-18', 7),
-    (9, 'Elden Ring', 'https://store.steampowered.com/app/1245620/ELDEN_RING/', '2022-02-25', 8),
-    (10, 'Hades', 'https://store.steampowered.com/app/1145360/Hades/', '2020-09-17', 9),
-    (11, 'Among Us', 'https://store.steampowered.com/app/945360/Among_Us/', '2018-06-15', 10),
-    (12, 'Slay the Spire', 'https://store.steampowered.com/app/646570/Slay_the_Spire/', '2019-01-23', 11),
-    (13, 'DOOM Eternal', 'https://store.steampowered.com/app/782330/DOOM_Eternal/', '2020-03-20', 12),
-    (14, 'Counter-Strike 2', 'https://store.steampowered.com/app/730/CounterStrike_2/', '2023-09-27', 6),
-    (15, 'Apex Legends', 'https://store.steampowered.com/app/1172470/Apex_Legends/', '2019-02-04', 13),
-    (16, 'Genshin Impact', 'https://genshin.hoyoverse.com/en/', '2020-09-28', 14),
-    (17, 'Baldur''s Gate 3', 'https://store.steampowered.com/app/1086940/Baldurs_Gate_3/', '2023-08-03', 15),
-    (18, 'Super Mario Odyssey', 'https://www.nintendo.com/us/store/products/super-mario-odyssey-switch/', '2017-10-27', 16),
-    (19, 'The Legend of Zelda: Breath of the Wild', 'https://www.nintendo.com/us/store/products/the-legend-of-zelda-breath-of-the-wild-switch/', '2017-03-03', 16),
-    (20, 'Animal Crossing: New Horizons', 'https://www.nintendo.com/us/store/products/animal-crossing-new-horizons-switch/', '2020-03-20', 16),
-    (21, 'Mario Kart 8 Deluxe', 'https://www.nintendo.com/us/store/products/mario-kart-8-deluxe-switch/', '2017-04-28', 16),
-    (22, 'Rocket League', 'https://www.rocketleague.com/', '2015-07-07', 17);
-
-INSERT OR IGNORE INTO game_genres (game_id, genre_id) VALUES
-    (1, 2), (1, 10), (1, 14), (1, 16),
-    (2, 3), (2, 8), (2, 17),
-    (3, 1), (3, 2), (3, 10), (3, 14),
-    (4, 1), (4, 2), (4, 6),
-    (5, 2), (5, 6),
-    (6, 7),
-    (7, 2), (7, 7),
-    (8, 2), (8, 8), (8, 16),
-    (9, 1), (9, 8), (9, 16),
-    (10, 1), (10, 9),
-    (11, 5),
-    (12, 9), (12, 13),
-    (13, 1), (13, 11),
-    (14, 5), (14, 11),
-    (15, 5), (15, 11),
-    (16, 1), (16, 8), (16, 16),
-    (17, 2), (17, 8), (17, 13),
-    (18, 2), (18, 6),
-    (19, 1), (19, 2), (19, 16),
-    (20, 4), (20, 5), (20, 17),
-    (21, 12), (21, 15),
-    (22, 5), (22, 12);
+    (game_id, genre_id, title, launch_url, release_date) VALUES
+    (1, 10, 'Minecraft', 'https://www.minecraft.net/en-us', '2011-11-18'),
+    (2, 3, 'Stardew Valley', 'https://www.stardewvalley.net/', '2016-02-26'),
+    (3, 14, 'Terraria', 'https://terraria.org/', '2011-05-16'),
+    (4, 6, 'Hollow Knight', 'https://store.steampowered.com/app/367520/Hollow_Knight/', '2017-02-24'),
+    (5, 6, 'Celeste', 'https://store.steampowered.com/app/504230/Celeste/', '2018-01-25'),
+    (6, 7, 'Portal', 'https://store.steampowered.com/app/400/Portal/', '2007-10-10'),
+    (7, 7, 'Portal 2', 'https://store.steampowered.com/app/620/Portal_2/', '2011-04-18'),
+    (8, 8, 'The Witcher 3: Wild Hunt', 'https://store.steampowered.com/app/292030/The_Witcher_3_Wild_Hunt/', '2015-05-18'),
+    (9, 1, 'Elden Ring', 'https://store.steampowered.com/app/1245620/ELDEN_RING/', '2022-02-25'),
+    (10, 9, 'Hades', 'https://store.steampowered.com/app/1145360/Hades/', '2020-09-17'),
+    (11, 5, 'Among Us', 'https://store.steampowered.com/app/945360/Among_Us/', '2018-06-15'),
+    (12, 13, 'Slay the Spire', 'https://store.steampowered.com/app/646570/Slay_the_Spire/', '2019-01-23'),
+    (13, 11, 'DOOM Eternal', 'https://store.steampowered.com/app/782330/DOOM_Eternal/', '2020-03-20'),
+    (14, 11, 'Counter-Strike 2', 'https://store.steampowered.com/app/730/CounterStrike_2/', '2023-09-27'),
+    (15, 11, 'Apex Legends', 'https://store.steampowered.com/app/1172470/Apex_Legends/', '2019-02-04'),
+    (16, 8, 'Genshin Impact', 'https://genshin.hoyoverse.com/en/', '2020-09-28'),
+    (17, 8, 'Baldur''s Gate 3', 'https://store.steampowered.com/app/1086940/Baldurs_Gate_3/', '2023-08-03'),
+    (18, 6, 'Super Mario Odyssey', 'https://www.nintendo.com/us/store/products/super-mario-odyssey-switch/', '2017-10-27'),
+    (19, 2, 'The Legend of Zelda: Breath of the Wild', 'https://www.nintendo.com/us/store/products/the-legend-of-zelda-breath-of-the-wild-switch/', '2017-03-03'),
+    (20, 4, 'Animal Crossing: New Horizons', 'https://www.nintendo.com/us/store/products/animal-crossing-new-horizons-switch/', '2020-03-20'),
+    (21, 15, 'Mario Kart 8 Deluxe', 'https://www.nintendo.com/us/store/products/mario-kart-8-deluxe-switch/', '2017-04-28'),
+    (22, 12, 'Rocket League', 'https://www.rocketleague.com/', '2015-07-07');
 
 INSERT OR IGNORE INTO user_games (user_id, game_id, rating, play_count) VALUES
     (1, 1, 5, 28), (1, 2, 4, 12),
