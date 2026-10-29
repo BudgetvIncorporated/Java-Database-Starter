@@ -42,6 +42,14 @@ final class CatalogValidation {
         return requireWebUrl(value, fieldName);
     }
 
+    static String requireEmail(String value) {
+        String normalized = requireText(value, "Email");
+        if (!normalized.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")) {
+            throw new IllegalArgumentException("Enter an email address such as name@example.com.");
+        }
+        return normalized;
+    }
+
     static String requireIsoDate(String value) {
         String normalized = requireText(value, "Publication date");
         try {

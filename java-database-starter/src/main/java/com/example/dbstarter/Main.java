@@ -1,67 +1,62 @@
 package com.example.dbstarter;
 
 import java.awt.Desktop;
-import java.io.IOException;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Scanner;
+import java.util.Set;
 
 public final class Main {
-    private static final int EXIT = 0;
-
     private Main() {
     }
 
     public static void main(String[] args) {
         try (Connection connection = Database.connect()) {
             SchemaInitializer.apply(connection);
-            System.out.println("Connected to the SQLite game catalog.");
-            runMenu(new Scanner(System.in), new GameCatalogDao(connection),
-                    new GameDao(connection), new DeveloperDao(connection));
-        } catch (SQLException | IOException exception) {
-            System.err.println("Could not start the game catalog: " + exception.getMessage());
+            System.out.println("Connected to the SQLite game library.");
+            runMenu(
+                    new Scanner(System.in),
+                    new GameCatalogDao(connection),
+                    new GameDao(connection),
+                    new UserDao(connection));
+        } catch (Exception exception) {
+            System.err.println("Could not start the game library: " + exception.getMessage());
         }
     }
 
     private static void runMenu(Scanner input, GameCatalogDao catalog,
-                                GameDao games, DeveloperDao developers) {
+                                GameDao games, UserDao users) {
         while (true) {
             printMenu();
             Integer choice = readInteger(input, "Choose an option: ");
-            if (choice == null || choice == EXIT) {
+            if (choice == null || choice == 0) {
                 System.out.println("Goodbye.");
                 return;
             }
 
             try {
                 switch (choice) {
-                    case 1 -> showGames(catalog.findAllGames());
-                    case 2 -> searchGames(input, catalog);
-                    case 3 -> filterByGenre(input, catalog);
-                    case 4 -> openGame(input, catalog);
-                    case 5 -> showUserReport(catalog);
-                    case 6 -> showUserLibrary(input, catalog);
-                    case 7 -> showDeveloperReport(catalog);
-                    case 8 -> addGame(input, catalog, games, developers);
-                    case 9 -> editGame(input, catalog, games, developers);
-                    case 10 -> deleteGame(input, catalog, games);
-                    case 11 -> showDevelopers(developers.findAllDevelopers());
-                    case 12 -> addDeveloper(input, developers);
-                    case 13 -> editDeveloper(input, developers);
-                    case 14 -> deleteDeveloper(input, developers);
-                    default -> System.out.println("Please choose a number from 0 to 14.");
+                    case 1 -> showGamePlayers(catalog.findGamePlayers());
+                    case 2 -> searchGamePlayers(input, catalog);
+                    case 3 -> filterGamePlayersByGenre(input, catalog);
+                    case 4 -> addUser(input, users);
+                    case 5 -> editUser(input, catalog, users);
+                    case 6 -> deleteUser(input, catalog, users);
+                    case 7 -> addGame(input, catalog, games);
+                    case 8 -> editGame(input, catalog, games);
+                    case 9 -> deleteGame(input, catalog, games);
+                    case 10 -> addGameToUser(input, catalog, users);
+                    case 11 -> openGame(input, catalog);
+                    default -> System.out.println("Choose a number from 0 to 11.");
                 }
             } catch (SQLException exception) {
-                System.err.println("Database error. You can try another menu option: "
+                System.out.println("The database could not complete that action: "
                         + exception.getMessage());
             } catch (IllegalArgumentException exception) {
-                System.out.println("Invalid catalog value: " + exception.getMessage());
+                System.out.println("Please check that information: " + exception.getMessage());
             }
         }
     }
@@ -69,232 +64,130 @@ public final class Main {
     private static void printMenu() {
         System.out.println();
         System.out.println("=== Game Library ===");
-        System.out.println("1. Browse all games (sorted by title)");
-        System.out.println("2. Search games by title");
-        System.out.println("3. Filter games by genre");
-        System.out.println("4. Open a game's saved page");
-        System.out.println("5. User game activity report");
-        System.out.println("6. View a user's game library");
-        System.out.println("7. Games per developer report");
-        System.out.println("8. Add a game");
-        System.out.println("9. Edit a game");
-        System.out.println("10. Delete a game");
-        System.out.println("11. List developers");
-        System.out.println("12. Add a developer");
-        System.out.println("13. Edit a developer");
-        System.out.println("14. Delete a developer");
+        System.out.println("1. Show games and the players who have them");
+        System.out.println("2. Search the player/game list");
+        System.out.println("3. Filter the player/game list by genre");
+        System.out.println("4. Add a user");
+        System.out.println("5. Edit a user");
+        System.out.println("6. Delete a user");
+        System.out.println("7. Add a game");
+        System.out.println("8. Edit a game");
+        System.out.println("9. Delete a game");
+        System.out.println("10. Add a game to a user's library");
+        System.out.println("11. Open a game's saved link");
         System.out.println("0. Exit");
     }
 
-    private static void searchGames(Scanner input, GameCatalogDao catalog) throws SQLException {
-        String searchTerm = readLine(input, "Enter a title or part of a title: ");
-        if (searchTerm == null) {
+    private static void showGamePlayers(List<GamePlayerEntry> entries) {
+        if (entries.isEmpty()) {
+            System.out.println("No games have been added to a user's library yet.");
             return;
         }
-        if (searchTerm.isBlank()) {
-            System.out.println("Search text cannot be empty.");
-            return;
-        }
-        showGames(catalog.searchGames(searchTerm.trim()));
-    }
-
-    private static void filterByGenre(Scanner input, GameCatalogDao catalog) throws SQLException {
-        List<Genre> genres = catalog.findAllGenres();
-        if (genres.isEmpty()) {
-            System.out.println("No genres are available.");
-            return;
-        }
-
-        System.out.println("Genres:");
-        for (int i = 0; i < genres.size(); i++) {
-            System.out.printf("%d. %s%n", i + 1, genres.get(i).name());
-        }
-        Integer selection = readInteger(input, "Choose a genre number: ");
-        if (selection == null) {
-            return;
-        }
-        if (selection < 1 || selection > genres.size()) {
-            System.out.println("That genre number is not in the list.");
-            return;
-        }
-
-        Genre genre = genres.get(selection - 1);
-        System.out.println("Games in " + genre.name() + ":");
-        showGames(catalog.findGamesByGenre(genre.name()));
-    }
-
-    private static void openGame(Scanner input, GameCatalogDao catalog) throws SQLException {
-        List<Game> games = catalog.findAllGames();
-        if (games.isEmpty()) {
-            System.out.println("There are no games to open.");
-            return;
-        }
-
-        System.out.println("Enter the game ID shown in the list:");
-        showGames(games);
-        Game selected = readGame(input, games);
-        if (selected == null) {
-            return;
-        }
-
-        try {
-            URI gameUri = URI.create(selected.url());
-            if (!Desktop.isDesktopSupported()) {
-                System.out.println("This environment cannot open a browser. Saved page: " + gameUri);
-                return;
-            }
-            Desktop desktop = Desktop.getDesktop();
-            if (!desktop.isSupported(Desktop.Action.BROWSE)) {
-                System.out.println("This environment cannot open a browser. Saved page: " + gameUri);
-                return;
-            }
-            desktop.browse(gameUri);
-            System.out.println("Opened " + selected.title() + " in your browser.");
-        } catch (Exception exception) {
-            System.out.println("Could not open the browser. Saved page: " + selected.url());
+        System.out.printf("%-42s %s%n", "Game", "Player");
+        System.out.println("-".repeat(66));
+        for (GamePlayerEntry entry : entries) {
+            System.out.printf("%-42s %s%n",
+                    shorten(entry.gameTitle(), 42), entry.username());
         }
     }
 
-    private static void showUserReport(GameCatalogDao catalog) throws SQLException {
-        List<UserGameSummary> summaries = catalog.summarizeUsers();
-        if (summaries.isEmpty()) {
-            System.out.println("No users are available.");
-            return;
-        }
-        System.out.println("Game activity per user:");
-        System.out.printf("%-18s %-8s %-12s %s%n",
-                "Username", "Games", "Avg rating", "Play count");
-        System.out.println("-".repeat(54));
-        for (UserGameSummary summary : summaries) {
-            System.out.printf("%-18s %-8d %-12.1f %d%n",
-                    summary.username(), summary.gameCount(),
-                    summary.averageRating(), summary.totalPlayCount());
-        }
-    }
-
-    private static void showUserLibrary(Scanner input, GameCatalogDao catalog)
+    private static void searchGamePlayers(Scanner input, GameCatalogDao catalog)
             throws SQLException {
-        List<User> users = catalog.findAllUsers();
-        if (users.isEmpty()) {
-            System.out.println("No users are available.");
-            return;
-        }
-
-        System.out.println("Sample users:");
-        for (User user : users) {
-            System.out.println("- " + user.username());
-        }
-        String username = readLine(input, "Enter a username: ");
-        if (username == null || username.isBlank()) {
-            return;
-        }
-
-        List<UserGame> userGames = catalog.findGamesForUser(username.trim());
-        if (userGames.isEmpty()) {
-            System.out.println("No saved games found for that username.");
-            return;
-        }
-
-        System.out.printf("%-34s %-18s %-12s %-8s %s%n",
-                "Title", "Genre", "Published", "Rating", "Plays");
-        System.out.println("-".repeat(82));
-        for (UserGame userGame : userGames) {
-            String rating = userGame.rating() == null ? "—" : userGame.rating().toString();
-            Game game = userGame.game();
-            System.out.printf("%-34s %-18s %-12s %-8s %d%n",
-                    shorten(game.title(), 34), shorten(game.genreName(), 18),
-                    game.releaseDate(), rating, userGame.playCount());
+        String search = readRequired(input, "Game title to search for: ", null);
+        if (search != null) {
+            showGamePlayers(catalog.searchGamePlayers(search));
         }
     }
 
-    private static void showDeveloperReport(GameCatalogDao catalog) throws SQLException {
-        List<DeveloperGameCount> counts = catalog.countGamesPerDeveloper();
-        if (counts.isEmpty()) {
-            System.out.println("No developers are available.");
-            return;
-        }
-        System.out.println("Games per developer:");
-        System.out.printf("%-30s %s%n", "Developer", "Games");
-        System.out.println("-".repeat(39));
-        for (DeveloperGameCount count : counts) {
-            System.out.printf("%-30s %d%n",
-                    count.developerName(), count.gameCount());
+    private static void filterGamePlayersByGenre(Scanner input, GameCatalogDao catalog)
+            throws SQLException {
+        Genre genre = chooseGenre(input, catalog.findAllGenres(), null);
+        if (genre != null) {
+            showGamePlayers(catalog.findGamePlayersByGenre(genre.id()));
         }
     }
 
-    private static void addGame(Scanner input, GameCatalogDao catalog, GameDao games,
-                                DeveloperDao developers) throws SQLException {
-        List<Developer> availableDevelopers = developers.findAllDevelopers();
-        Developer developer = chooseDeveloper(input, availableDevelopers, null);
-        if (developer == null) {
-            System.out.println("Game creation cancelled.");
+    private static void addUser(Scanner input, UserDao users) throws SQLException {
+        String username = readRequired(input, "Username (blank cancels): ", null);
+        if (username == null) {
+            System.out.println("User entry cancelled.");
             return;
         }
-
-        String title = readRequired(input, "Game title (blank cancels): ", null);
-        if (title == null) {
-            System.out.println("Game creation cancelled.");
+        String email = readEmail(input, "Email (blank cancels): ", null);
+        if (email == null) {
+            System.out.println("User entry cancelled.");
             return;
         }
-        String url = readWebUrl(input, "Game URL (http:// or https://; blank cancels): ",
-                null, false, false);
-        if (url == null) {
-            System.out.println("Game creation cancelled.");
-            return;
-        }
-        String publishedOn = readIsoDate(input, "Publication date (YYYY-MM-DD; blank cancels): ",
-                null);
-        if (publishedOn == null) {
-            System.out.println("Game creation cancelled.");
-            return;
-        }
-        List<Integer> genreIds = chooseGenreIds(input, catalog.findAllGenres(), List.of(), false);
-        if (genreIds == null) {
-            System.out.println("Game creation cancelled.");
-            return;
-        }
-
-        int gameId = games.createGame(
-                new Game(0, title, url, publishedOn, developer.id(), "", ""), genreIds);
-        System.out.println("Added game with ID " + gameId + ".");
+        int id = users.createUser(new User(0, username, email));
+        System.out.println("User added. Their ID is " + id + ".");
     }
 
-    private static void editGame(Scanner input, GameCatalogDao catalog, GameDao games,
-                                 DeveloperDao developers) throws SQLException {
-        List<Game> allGames = catalog.findAllGames();
-        Game current = chooseGame(input, allGames, "Game ID to edit: ");
+    private static void editUser(Scanner input, GameCatalogDao catalog, UserDao users)
+            throws SQLException {
+        User current = chooseUser(input, catalog.findAllUsers(), "User ID to edit: ");
         if (current == null) {
             return;
         }
-
-        String title = readRequired(input, "Title [" + current.title() + "]: ", current.title());
-        String url = readWebUrl(input, "Game URL [" + current.url() + "]: ",
-                current.url(), false, false);
-        String publishedOn = readIsoDate(input,
-                "Publication date [" + current.publishedOn() + "]: ", current.publishedOn());
-        if (title == null || url == null || publishedOn == null) {
+        String username = readRequired(input, "Username [" + current.username() + "]: ",
+                current.username());
+        String email = readEmail(input, "Email [" + current.email() + "]: ", current.email());
+        if (username == null || email == null) {
             return;
         }
+        users.updateUser(new User(current.id(), username, email));
+        System.out.println("User updated.");
+    }
 
-        List<Developer> availableDevelopers = developers.findAllDevelopers();
-        Developer developer = chooseDeveloper(input, availableDevelopers, current.developerId());
-        if (developer == null) {
+    private static void deleteUser(Scanner input, GameCatalogDao catalog, UserDao users)
+            throws SQLException {
+        User user = chooseUser(input, catalog.findAllUsers(), "User ID to delete: ");
+        if (user == null) {
             return;
         }
-        List<Integer> currentGenreIds = games.findGenreIdsForGame(current.id());
-        List<Integer> genreIds = chooseGenreIds(
-                input, catalog.findAllGenres(), currentGenreIds, true);
-        if (genreIds == null) {
+        if (!confirm(input, "Deleting this user also removes their game links. Type yes: ")) {
+            System.out.println("User deletion cancelled.");
             return;
         }
+        users.deleteUser(user.id());
+        System.out.println("User deleted.");
+    }
 
-        Game updated = new Game(current.id(), title, url, publishedOn,
-                developer.id(), current.developerName(), current.genres());
-        if (games.updateGame(updated, genreIds)) {
-            System.out.println("Updated " + updated.title() + ".");
-        } else {
-            System.out.println("That game no longer exists.");
+    private static void addGame(Scanner input, GameCatalogDao catalog, GameDao games)
+            throws SQLException {
+        Genre genre = chooseGenre(input, catalog.findAllGenres(), null);
+        if (genre == null) {
+            return;
         }
+        String title = readRequired(input, "Game title (blank cancels): ", null);
+        String url = readWebUrl(input, "Game link (http:// or https://): ", null);
+        String date = readIsoDate(input, "Release date (YYYY-MM-DD): ", null);
+        if (title == null || url == null || date == null) {
+            System.out.println("Game entry cancelled.");
+            return;
+        }
+        int id = games.createGame(new Game(0, genre.id(), title, url, date, genre.name()));
+        System.out.println("Game added. Its ID is " + id + ".");
+    }
+
+    private static void editGame(Scanner input, GameCatalogDao catalog, GameDao games)
+            throws SQLException {
+        Game current = chooseGame(input, catalog.findAllGames(), "Game ID to edit: ");
+        if (current == null) {
+            return;
+        }
+        String title = readRequired(input, "Title [" + current.title() + "]: ",
+                current.title());
+        String url = readWebUrl(input, "Game link [" + current.url() + "]: ", current.url());
+        String date = readIsoDate(input, "Release date [" + current.releaseDate() + "]: ",
+                current.releaseDate());
+        Genre genre = chooseGenre(input, catalog.findAllGenres(), current.genreId());
+        if (title == null || url == null || date == null || genre == null) {
+            System.out.println("Game edit cancelled.");
+            return;
+        }
+        games.updateGame(new Game(
+                current.id(), genre.id(), title, url, date, genre.name()));
+        System.out.println("Game updated.");
     }
 
     private static void deleteGame(Scanner input, GameCatalogDao catalog, GameDao games)
@@ -303,162 +196,146 @@ public final class Main {
         if (game == null) {
             return;
         }
-        if (!confirmDelete(input, "Delete \"" + game.title() + "\"? Type yes to confirm: ")) {
+        if (!confirm(input, "Deleting this game also removes its player links. Type yes: ")) {
             System.out.println("Game deletion cancelled.");
             return;
         }
-        System.out.println(games.deleteGame(game.id())
-                ? "Deleted " + game.title() + "."
-                : "That game no longer exists.");
+        games.deleteGame(game.id());
+        System.out.println("Game deleted.");
     }
 
-    private static void addDeveloper(Scanner input, DeveloperDao developers) throws SQLException {
-        String name = readRequired(input, "Developer name (blank cancels): ", null);
-        if (name == null) {
-            System.out.println("Developer creation cancelled.");
-            return;
-        }
-        String websiteUrl = readWebUrl(input,
-                "Website URL (optional; http:// or https://): ", null, true, false);
-        int developerId = developers.createDeveloper(new Developer(0, name, websiteUrl));
-        System.out.println("Added developer with ID " + developerId + ".");
-    }
-
-    private static void editDeveloper(Scanner input, DeveloperDao developers) throws SQLException {
-        Developer current = chooseDeveloper(input, developers.findAllDevelopers(), null);
-        if (current == null) {
-            return;
-        }
-        String name = readRequired(input, "Developer name [" + current.name() + "]: ",
-                current.name());
-        String websiteUrl = readWebUrl(input,
-                "Website URL [" + displayWebsite(current.websiteUrl())
-                        + "] (Enter keeps it, - clears it): ",
-                current.websiteUrl(), true, true);
-        if (name == null) {
-            return;
-        }
-        Developer updated = new Developer(current.id(), name, websiteUrl);
-        if (developers.updateDeveloper(updated)) {
-            System.out.println("Updated " + updated.name() + ".");
-        } else {
-            System.out.println("That developer no longer exists.");
-        }
-    }
-
-    private static void deleteDeveloper(Scanner input, DeveloperDao developers)
+    private static void addGameToUser(Scanner input, GameCatalogDao catalog, UserDao users)
             throws SQLException {
-        Developer developer = chooseDeveloper(input, developers.findAllDevelopers(), null);
-        if (developer == null) {
+        User user = chooseUser(input, catalog.findAllUsers(), "User ID (blank cancels): ");
+        if (user == null) {
             return;
         }
-        if (!confirmDelete(input,
-                "Delete \"" + developer.name() + "\"? Type yes to confirm: ")) {
-            System.out.println("Developer deletion cancelled.");
+        Game game = chooseGame(input, catalog.findAllGames(), "Game ID (blank cancels): ");
+        if (game == null) {
             return;
         }
-        System.out.println(developers.deleteDeveloper(developer.id())
-                ? "Deleted " + developer.name() + "."
-                : "That developer no longer exists.");
+
+        Integer rating = readOptionalRating(input);
+        if (rating == Integer.MIN_VALUE) {
+            return;
+        }
+        Integer playCount = readOptionalCount(input);
+        if (playCount == null) {
+            return;
+        }
+
+        users.addGameToLibrary(user.id(), game.id(), rating, playCount);
+        System.out.println("Saved " + game.title() + " to " + user.username() + "'s library.");
     }
 
-    private static Game chooseGame(Scanner input, List<Game> games, String prompt) {
-        if (games.isEmpty()) {
-            System.out.println("There are no games available.");
-            return null;
-        }
-        showGames(games);
-        Set<Integer> validIds = new HashSet<>();
-        for (Game game : games) {
-            validIds.add(game.id());
-        }
-        Integer selectedId = readListedId(input, prompt, validIds, null);
-        if (selectedId == null) {
-            return null;
-        }
-        return games.stream().filter(game -> game.id() == selectedId).findFirst().orElse(null);
-    }
-
-    private static Developer chooseDeveloper(Scanner input, List<Developer> developers,
-                                             Integer defaultId) {
-        if (developers.isEmpty()) {
-            System.out.println("Add a developer before creating a game.");
-            return null;
-        }
-        showDevelopers(developers);
-        Set<Integer> validIds = new HashSet<>();
-        for (Developer developer : developers) {
-            validIds.add(developer.id());
-        }
-        String prompt = defaultId == null
-                ? "Developer ID (blank cancels): "
-                : "Developer ID [" + defaultId + "] (Enter keeps it): ";
-        Integer selectedId = readListedId(input, prompt, validIds, defaultId);
-        if (selectedId == null) {
-            return null;
-        }
-        return developers.stream()
-                .filter(developer -> developer.id() == selectedId)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private static List<Integer> chooseGenreIds(Scanner input, List<Genre> genres,
-                                                List<Integer> defaults, boolean editing) {
-        if (genres.isEmpty()) {
-            System.out.println("No genres are available; the game will have no genres.");
-            return List.of();
-        }
-        System.out.println("Available genres:");
-        for (Genre genre : genres) {
-            System.out.printf("%d. %s%n", genre.id(), genre.name());
-        }
-        String defaultText = defaults.isEmpty() ? "none"
-                : defaults.stream().map(String::valueOf).reduce((a, b) -> a + "," + b).orElse("");
-        String prompt = editing
-                ? "Genre IDs [" + defaultText + "] (Enter keeps them, - clears, q cancels): "
-                : "Genre IDs separated by commas (blank for none, q cancels): ";
-        Set<Integer> validIds = new HashSet<>();
-        for (Genre genre : genres) {
-            validIds.add(genre.id());
-        }
-
+    private static Integer readOptionalRating(Scanner input) {
         while (true) {
-            String value = readLine(input, prompt);
+            String value = readLine(input, "Rating 1-5 (blank leaves it unrated, q cancels): ");
+            if (value == null || value.trim().equalsIgnoreCase("q")) {
+                return Integer.MIN_VALUE;
+            }
+            if (value.isBlank()) {
+                return null;
+            }
+            try {
+                int rating = Integer.parseInt(value.trim());
+                if (rating >= 1 && rating <= 5) {
+                    return rating;
+                }
+            } catch (NumberFormatException ignored) {
+                // Show the same helpful message as for a number outside the allowed range.
+            }
+            System.out.println("Enter a whole number from 1 to 5, or leave it blank.");
+        }
+    }
+
+    private static Integer readOptionalCount(Scanner input) {
+        while (true) {
+            String value = readLine(input, "Play count (blank means 0, q cancels): ");
             if (value == null || value.trim().equalsIgnoreCase("q")) {
                 return null;
             }
             if (value.isBlank()) {
-                return defaults;
+                return 0;
             }
-            if (value.trim().equals("-")) {
-                return List.of();
-            }
-
-            List<Integer> selected = new ArrayList<>();
-            boolean valid = true;
-            for (String part : value.split(",")) {
-                try {
-                    int genreId = Integer.parseInt(part.trim());
-                    if (!validIds.contains(genreId) || selected.contains(genreId)) {
-                        valid = false;
-                        break;
-                    }
-                    selected.add(genreId);
-                } catch (NumberFormatException exception) {
-                    valid = false;
-                    break;
+            try {
+                int count = Integer.parseInt(value.trim());
+                if (count >= 0) {
+                    return count;
                 }
+            } catch (NumberFormatException ignored) {
+                // Show the same helpful message as for a negative or non-numeric value.
             }
-            if (valid) {
-                return selected;
-            }
-            System.out.println("Enter each available genre ID once, separated by commas.");
+            System.out.println("Enter 0 or a positive whole number, or leave it blank.");
         }
     }
 
-    private static Integer readListedId(Scanner input, String prompt, Set<Integer> validIds,
-                                        Integer defaultId) {
+    private static void openGame(Scanner input, GameCatalogDao catalog) throws SQLException {
+        Game game = chooseGame(input, catalog.findAllGames(), "Game ID to open: ");
+        if (game == null) {
+            return;
+        }
+        try {
+            URI uri = URI.create(game.url());
+            if (Desktop.isDesktopSupported()
+                    && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(uri);
+                System.out.println("Opened the saved link for " + game.title() + ".");
+            } else {
+                System.out.println("This environment cannot open a browser. Saved link: "
+                        + game.url());
+            }
+        } catch (Exception exception) {
+            System.out.println("Could not open the browser. Saved link: " + game.url());
+        }
+    }
+
+    private static User chooseUser(Scanner input, List<User> users, String prompt) {
+        if (users.isEmpty()) {
+            System.out.println("No users are available. Add a user first.");
+            return null;
+        }
+        System.out.printf("%-6s %s%n", "ID", "Username");
+        for (User user : users) {
+            System.out.printf("%-6d %s%n", user.id(), user.username());
+        }
+        Integer id = readListedId(input, prompt, users.stream().map(User::id).toList(), null);
+        return id == null ? null : users.stream().filter(user -> user.id() == id)
+                .findFirst().orElse(null);
+    }
+
+    private static Game chooseGame(Scanner input, List<Game> games, String prompt) {
+        if (games.isEmpty()) {
+            System.out.println("No games are available. Add a game first.");
+            return null;
+        }
+        showGamesForSelection(games);
+        Integer id = readListedId(input, prompt, games.stream().map(Game::id).toList(), null);
+        return id == null ? null : games.stream().filter(game -> game.id() == id)
+                .findFirst().orElse(null);
+    }
+
+    private static Genre chooseGenre(Scanner input, List<Genre> genres, Integer defaultId) {
+        if (genres.isEmpty()) {
+            System.out.println("No genres are available.");
+            return null;
+        }
+        System.out.printf("%-6s %s%n", "ID", "Genre");
+        for (Genre genre : genres) {
+            System.out.printf("%-6d %s%n", genre.id(), genre.name());
+        }
+        String prompt = defaultId == null
+                ? "Genre ID (blank cancels): "
+                : "Genre ID [" + defaultId + "] (Enter keeps it): ";
+        Integer id = readListedId(input, prompt, genres.stream().map(Genre::id).toList(),
+                defaultId);
+        return id == null ? null : genres.stream().filter(genre -> genre.id() == id)
+                .findFirst().orElse(null);
+    }
+
+    private static Integer readListedId(Scanner input, String prompt,
+                                        List<Integer> validIds, Integer defaultId) {
+        Set<Integer> allowed = new HashSet<>(validIds);
         while (true) {
             String value = readLine(input, prompt);
             if (value == null) {
@@ -468,14 +345,21 @@ public final class Main {
                 return defaultId;
             }
             try {
-                int selectedId = Integer.parseInt(value.trim());
-                if (validIds.contains(selectedId)) {
-                    return selectedId;
+                int id = Integer.parseInt(value.trim());
+                if (allowed.contains(id)) {
+                    return id;
                 }
-                System.out.println("Choose an ID shown in the list.");
-            } catch (NumberFormatException exception) {
-                System.out.println("Enter a whole-number ID.");
+            } catch (NumberFormatException ignored) {
+                // Use the common message below for all invalid IDs.
             }
+            System.out.println("Choose an ID from the list.");
+        }
+    }
+
+    private static void showGamesForSelection(List<Game> games) {
+        System.out.printf("%-6s %s%n", "ID", "Game");
+        for (Game game : games) {
+            System.out.printf("%-6d %s%n", game.id(), game.title());
         }
     }
 
@@ -485,7 +369,7 @@ public final class Main {
             if (value == null) {
                 return null;
             }
-            if (value.isBlank()) {
+            if (value.isBlank() && defaultValue != null) {
                 return defaultValue;
             }
             try {
@@ -496,24 +380,34 @@ public final class Main {
         }
     }
 
-    private static String readWebUrl(Scanner input, String prompt, String defaultValue,
-                                     boolean optional, boolean allowClear) {
+    private static String readEmail(Scanner input, String prompt, String defaultValue) {
         while (true) {
             String value = readLine(input, prompt);
             if (value == null) {
                 return null;
             }
-            if (value.isBlank()) {
+            if (value.isBlank() && defaultValue != null) {
                 return defaultValue;
             }
-            if (allowClear && value.trim().equals("-")) {
+            try {
+                return CatalogValidation.requireEmail(value);
+            } catch (IllegalArgumentException exception) {
+                System.out.println(exception.getMessage());
+            }
+        }
+    }
+
+    private static String readWebUrl(Scanner input, String prompt, String defaultValue) {
+        while (true) {
+            String value = readLine(input, prompt);
+            if (value == null) {
                 return null;
             }
-            if (optional && value.trim().equals("-")) {
-                return null;
+            if (value.isBlank() && defaultValue != null) {
+                return defaultValue;
             }
             try {
-                return CatalogValidation.requireWebUrl(value, "Website URL");
+                return CatalogValidation.requireWebUrl(value, "Game link");
             } catch (IllegalArgumentException exception) {
                 System.out.println(exception.getMessage());
             }
@@ -526,84 +420,13 @@ public final class Main {
             if (value == null) {
                 return null;
             }
-            if (value.isBlank()) {
+            if (value.isBlank() && defaultValue != null) {
                 return defaultValue;
             }
             try {
                 return CatalogValidation.requireIsoDate(value);
             } catch (IllegalArgumentException exception) {
                 System.out.println(exception.getMessage());
-            }
-        }
-    }
-
-    private static boolean confirmDelete(Scanner input, String prompt) {
-        String response = readLine(input, prompt);
-        return response != null && response.trim().equalsIgnoreCase("yes");
-    }
-
-    private static void showDevelopers(List<Developer> developers) {
-        if (developers.isEmpty()) {
-            System.out.println("No developers are available.");
-            return;
-        }
-        System.out.printf("%-4s %-32s %s%n", "ID", "Developer", "Website");
-        System.out.println("-".repeat(95));
-        for (Developer developer : developers) {
-            System.out.printf("%-4d %-32s %s%n",
-                    developer.id(), shorten(developer.name(), 32),
-                    displayWebsite(developer.websiteUrl()));
-        }
-    }
-
-    private static String displayWebsite(String websiteUrl) {
-        return websiteUrl == null ? "(none)" : websiteUrl;
-    }
-
-    private static void showGames(List<Game> games) {
-        if (games.isEmpty()) {
-            System.out.println("No games matched.");
-            return;
-        }
-
-        // Sorting is performed in Java after the rows are loaded from SQLite.
-        List<Game> sortedGames = new ArrayList<>(games);
-        sortedGames.sort(Comparator.comparing(Game::title, String.CASE_INSENSITIVE_ORDER)
-                .thenComparing(Game::title));
-
-        System.out.printf("%-4s %-34s %-12s %-22s %s%n",
-                "ID", "Title", "Released", "Developer", "Genres");
-        System.out.println("-".repeat(105));
-        for (Game game : sortedGames) {
-            System.out.printf("%-4d %-34s %-12s %-22s %s%n",
-                    game.id(), shorten(game.title(), 34), game.releaseDate(),
-                    shorten(game.developerName(), 22), game.genreName());
-        }
-    }
-
-    private static String shorten(String value, int maxLength) {
-        if (value.length() <= maxLength) {
-            return value;
-        }
-        return value.substring(0, maxLength - 3) + "...";
-    }
-
-    private static Game readGame(Scanner input, List<Game> games) {
-        while (true) {
-            String value = readLine(input, "Game ID (or press Enter to cancel): ");
-            if (value == null || value.isBlank()) {
-                return null;
-            }
-            try {
-                int gameId = Integer.parseInt(value.trim());
-                for (Game game : games) {
-                    if (game.id() == gameId) {
-                        return game;
-                    }
-                }
-                System.out.println("No game has that ID. Choose an ID from the list.");
-            } catch (NumberFormatException exception) {
-                System.out.println("Enter a whole-number game ID.");
             }
         }
     }
@@ -617,16 +440,22 @@ public final class Main {
             try {
                 return Integer.parseInt(value.trim());
             } catch (NumberFormatException exception) {
-                System.out.println("Please enter a whole number.");
+                System.out.println("Enter a whole number.");
             }
         }
     }
 
+    private static boolean confirm(Scanner input, String prompt) {
+        String response = readLine(input, prompt);
+        return response != null && response.trim().equalsIgnoreCase("yes");
+    }
+
+    private static String shorten(String value, int maxLength) {
+        return value.length() <= maxLength ? value : value.substring(0, maxLength - 3) + "...";
+    }
+
     private static String readLine(Scanner input, String prompt) {
         System.out.print(prompt);
-        if (!input.hasNextLine()) {
-            return null;
-        }
-        return input.nextLine();
+        return input.hasNextLine() ? input.nextLine() : null;
     }
 }
