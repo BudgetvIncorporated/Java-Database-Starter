@@ -118,7 +118,7 @@ public final class Main {
             System.out.println("User entry cancelled.");
             return;
         }
-        int id = users.createUser(new User(0, username, email));
+        int id = users.create(new User(0, username, email));
         System.out.println("User added. Their ID is " + id + ".");
     }
 
@@ -134,8 +134,11 @@ public final class Main {
         if (username == null || email == null) {
             return;
         }
-        users.updateUser(new User(current.id(), username, email));
-        System.out.println("User updated.");
+        if (users.update(new User(current.id(), username, email))) {
+            System.out.println("User updated.");
+        } else {
+            System.out.println("That user no longer exists.");
+        }
     }
 
     private static void deleteUser(Scanner input, GameCatalogDao catalog, UserDao users)
@@ -148,8 +151,9 @@ public final class Main {
             System.out.println("User deletion cancelled.");
             return;
         }
-        users.deleteUser(user.id());
-        System.out.println("User deleted.");
+        System.out.println(users.delete(user.id())
+                ? "User deleted."
+                : "That user no longer exists.");
     }
 
     private static void addGame(Scanner input, GameCatalogDao catalog, GameDao games)
@@ -165,7 +169,7 @@ public final class Main {
             System.out.println("Game entry cancelled.");
             return;
         }
-        int id = games.createGame(new Game(0, genre.id(), title, url, date, genre.name()));
+        int id = games.create(new Game(0, genre.id(), title, url, date, genre.name()));
         System.out.println("Game added. Its ID is " + id + ".");
     }
 
@@ -185,9 +189,12 @@ public final class Main {
             System.out.println("Game edit cancelled.");
             return;
         }
-        games.updateGame(new Game(
-                current.id(), genre.id(), title, url, date, genre.name()));
-        System.out.println("Game updated.");
+        if (games.update(new Game(
+                current.id(), genre.id(), title, url, date, genre.name()))) {
+            System.out.println("Game updated.");
+        } else {
+            System.out.println("That game no longer exists.");
+        }
     }
 
     private static void deleteGame(Scanner input, GameCatalogDao catalog, GameDao games)
@@ -200,8 +207,9 @@ public final class Main {
             System.out.println("Game deletion cancelled.");
             return;
         }
-        games.deleteGame(game.id());
-        System.out.println("Game deleted.");
+        System.out.println(games.delete(game.id())
+                ? "Game deleted."
+                : "That game no longer exists.");
     }
 
     private static void addGameToUser(Scanner input, GameCatalogDao catalog, UserDao users)
@@ -216,23 +224,20 @@ public final class Main {
         }
 
         Integer rating = readOptionalRating(input);
-        if (rating == Integer.MIN_VALUE) {
-            return;
-        }
         Integer playCount = readOptionalCount(input);
         if (playCount == null) {
             return;
         }
 
-        users.addGameToLibrary(user.id(), game.id(), rating, playCount);
+        users.addGameToLibrary(new UserGame(user.id(), game.id(), rating, playCount));
         System.out.println("Saved " + game.title() + " to " + user.username() + "'s library.");
     }
 
     private static Integer readOptionalRating(Scanner input) {
         while (true) {
-            String value = readLine(input, "Rating 1-5 (blank leaves it unrated, q cancels): ");
-            if (value == null || value.trim().equalsIgnoreCase("q")) {
-                return Integer.MIN_VALUE;
+            String value = readLine(input, "Rating 1-5 (blank leaves it unrated): ");
+            if (value == null) {
+                return null;
             }
             if (value.isBlank()) {
                 return null;
@@ -369,7 +374,7 @@ public final class Main {
             if (value == null) {
                 return null;
             }
-            if (value.isBlank() && defaultValue != null) {
+            if (value.isBlank()) {
                 return defaultValue;
             }
             try {
@@ -386,7 +391,7 @@ public final class Main {
             if (value == null) {
                 return null;
             }
-            if (value.isBlank() && defaultValue != null) {
+            if (value.isBlank()) {
                 return defaultValue;
             }
             try {
@@ -403,7 +408,7 @@ public final class Main {
             if (value == null) {
                 return null;
             }
-            if (value.isBlank() && defaultValue != null) {
+            if (value.isBlank()) {
                 return defaultValue;
             }
             try {
@@ -420,7 +425,7 @@ public final class Main {
             if (value == null) {
                 return null;
             }
-            if (value.isBlank() && defaultValue != null) {
+            if (value.isBlank()) {
                 return defaultValue;
             }
             try {
