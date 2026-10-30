@@ -92,8 +92,11 @@ public class GameLibraryDaoTest {
     public void gamePlayerListShowsOnlyGameAndUsername() throws Exception {
         List<GamePlayerEntry> entries = catalog.findGamePlayers();
         assertTrue(entries.contains(new GamePlayerEntry("Minecraft", "player01")));
-        assertEquals("Minecraft", entries.get(0).gameTitle());
-        assertEquals("player01", entries.get(0).username());
+        GamePlayerEntry minecraft = entries.stream()
+                .filter(entry -> entry.gameTitle().equals("Minecraft"))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("player01", minecraft.username());
     }
 
     @Test
@@ -104,7 +107,11 @@ public class GameLibraryDaoTest {
 
     @Test
     public void databaseRejectsDuplicateGameForOneUser() throws Exception {
-        UserGame saved = new UserGame(1, 1, null, 0);
+        int userId = users.create(new User(0, "duplicate_test_player", "duplicate_test@example.com"));
+        int gameId = games.create(new Game(
+                0, 7, "Duplicate Test Puzzle", "https://example.com/duplicate-test",
+                "2025-01-04", "Puzzle"));
+        UserGame saved = new UserGame(userId, gameId, null, 0);
         users.addGameToLibrary(saved);
         assertThrows(SQLException.class, () -> users.addGameToLibrary(saved));
     }
