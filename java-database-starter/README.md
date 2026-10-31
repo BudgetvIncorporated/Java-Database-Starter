@@ -119,12 +119,29 @@ the project manageable. If I redesigned the schema, I would consider a
 `game_genres` junction table so a game could belong to multiple genres, which
 would better represent games that span genres.
 
+## Five-minute demo outline
+
+1. **0:00–1:00 — Explain the schema.** Show the four tables and explain the
+   one-to-many genre relationship and the many-to-many user/game relationship
+   through `user_games`.
+2. **1:00–2:00 — Run the app.** Use menu option 1 to show the joined game/player
+   list. Explain that the query combines `users`, `user_games`, and `games`.
+3. **2:00–3:00 — Show search and filtering.** Use options 2 and 3, and point out
+   that entered values are passed through prepared statements.
+4. **3:00–4:00 — Show the reports.** Use option 12 for the `GROUP BY` count and
+   option 13 for the Java insertion sort.
+5. **4:00–5:00 — Demonstrate CRUD and validation.** Add, edit, and remove a
+   temporary game or user, then mention the DAO tests. Avoid changing the seeded
+   sample records during the demo.
+
 ## Main files
 
 - `src/main/resources/schema.sql` creates the four tables and their constraints.
 - `src/main/resources/seed.sql` adds sample genres, users, games, and libraries.
 - `Database.java` opens SQLite and enables foreign-key checks.
-- `GameDao.java`, `UserDao.java`, and `GameCatalogDao.java` separate SQL from
-  the menu.
+- `CrudDao.java` defines the CRUD interface; `GameDao.java` and `UserDao.java`
+  implement it.
+- `GameCatalogDao.java` contains prepared queries for lists and reports.
+- `GameAlgorithms.java` sorts titles in Java.
 - `PROJECT_PLAN.md` contains the ER diagram, normalization notes, and milestone
   sequence.
