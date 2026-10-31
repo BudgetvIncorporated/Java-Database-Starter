@@ -1,58 +1,130 @@
 # Game Library
 
-A Java and SQLite catalog of games, developers, and genres. A game can have
-multiple genres and belongs to one developer. Users can also save games in
-personal libraries with ratings and play counts. Saved links open official or
-store pages; this app does not host full games.
+A Java console app backed by SQLite. Users can browse a game catalog, search and
+filter it, save games to personal libraries, record ratings and play counts, and
+open a game's saved link. The app opens external game pages; it does not host
+playable games.
 
-## Run the console app
+## Run and test
 
 From this directory, run:
 
 ```sh
+mvn test
 mvn compile exec:java
 ```
 
-The app uses `game-library.db` by default. On startup, it applies `schema.sql`
-and then `seed.sql`. Re-running the sample seed does not create duplicate
-records. To use another database file, add
+The project targets Java 17 and uses the `sqlite-jdbc` driver declared in
+`pom.xml`. The app uses `game-library.db` by default. On startup,
+`SchemaInitializer` applies `schema.sql` and `seed.sql`. The seed can be rerun
+without duplicating its sample records. To choose another database file, add
 `-Dgame.catalog.db=/path/to/catalog.db` to the Maven command.
 
-The menu lets you browse and sort games, search titles, filter by genre, open a
-saved URL, view user activity, and list a user's saved games with ratings and
-play counts. It also supports full create, read, update, and delete workflows
-for games and developers. Game forms let users choose a developer and assign
-existing genres. Games cannot be saved with blank titles, invalid links, or
-invalid dates; developers still referenced by games cannot be deleted. User
-values are bound through prepared statements.
+## Features
 
-## Import the SQL files into SQLite
+- Create, read, update, and delete games and users.
+- Add a game to a user's library with an optional 1–5 rating and play count.
+- Show which users saved which games; search by title and filter by genre.
+- Open a selected game's saved link.
+- Show saved-game counts per user using a `GROUP BY` query.
+- Sort games by title in Java using insertion sort.
+- Validate user input and use prepared statements for SQL values.
 
-With a tool such as DB Browser for SQLite:
+## Database model
 
-1. Create or open a file named `game-library.db`.
-2. In **Execute SQL**, run `src/main/resources/schema.sql`.
-3. Run `src/main/resources/seed.sql`.
-4. Browse `developers`, `genres`, `games`, `game_genres`, `users`, and
-   `user_games` to inspect the records.
+The four tables match the project ER diagram:
 
-Run the schema before the seed because the seed inserts into those tables. To
-rebuild the sample database, close it, remove `game-library.db`, create a fresh
-database file with that name, and run the scripts in order. Removing that file
-deletes its contents.
+- `genres` stores each genre once.
+- `games` stores a title, link, release date, and one `genre_id`.
+- `users` stores usernames and email addresses.
+- `user_games` joins users to games and stores each user's rating and play count.
 
-The earlier draft database, `database.db`, is left untouched. The current Java
-program uses `game-library.db` so the old draft data is not overwritten.
+`genres` to `games` is one-to-many. `users` to `games` is many-to-many through
+`user_games`, whose composite primary key prevents a user from saving the same
+game twice. The rating and play count belong to that user/game relationship.
 
-## Where things live
+## Recreate the database manually
 
-- `src/main/resources/schema.sql` creates developers, games, genres,
-  game-genre links, users, and user-game records.
-- `src/main/resources/seed.sql` inserts sample games, developers, genres,
-  users, and user-game ratings/play counts.
+In SQLite or DB Browser for SQLite, run these files in order:
+
+1. `src/main/resources/schema.sql`
+2. `src/main/resources/seed.sql`
+
+The schema must run first because the seed inserts rows into its tables. The
+generated `.db` files and Maven `target` folder are ignored by Git; the SQL
+scripts are the reproducible database setup.
+
+## Questions the database can answer
+
+### 1. Which games belong to a selected genre?
+
+```sql
+SELECT g.title, g.release_date, ge.genre_name
+FROM games AS g
+JOIN genres AS ge ON ge.genre_id = g.genre_id
+WHERE ge.genre_name = 'Puzzle'
+ORDER BY g.title;
+```
+
+### 2. Which games has a user saved?
+
+```sql
+SELECT u.username, g.title, ge.genre_name, ug.rating, ug.play_count
+FROM users AS u
+JOIN user_games AS ug ON ug.user_id = u.user_id
+JOIN games AS g ON g.game_id = ug.game_id
+JOIN genres AS ge ON ge.genre_id = g.genre_id
+WHERE u.username = 'player01'
+ORDER BY g.title;
+```
+
+This query joins four tables.
+
+### 3. How many games has each user saved?
+
+```sql
+SELECT u.username, COUNT(ug.game_id) AS saved_games
+FROM users AS u
+LEFT JOIN user_games AS ug ON ug.user_id = u.user_id
+GROUP BY u.user_id, u.username
+ORDER BY saved_games DESC, u.username;
+```
+
+### 4. Which games have the most total plays?
+
+```sql
+SELECT g.title, COALESCE(SUM(ug.play_count), 0) AS total_plays
+FROM games AS g
+LEFT JOIN user_games AS ug ON ug.game_id = g.game_id
+GROUP BY g.game_id, g.title
+ORDER BY total_plays DESC, g.title;
+```
+
+### 5. Which games have the highest average rating?
+
+```sql
+SELECT g.title, ROUND(AVG(ug.rating), 2) AS average_rating,
+       COUNT(ug.rating) AS rating_count
+FROM games AS g
+JOIN user_games AS ug ON ug.game_id = g.game_id
+GROUP BY g.game_id, g.title
+HAVING COUNT(ug.rating) >= 2
+ORDER BY average_rating DESC, rating_count DESC;
+```
+
+## Schema reflection
+
+I kept one genre per game because that matches the approved diagram and keeps
+the project manageable. If I redesigned the schema, I would consider a
+`game_genres` junction table so a game could belong to multiple genres, which
+would better represent games that span genres.
+
+## Main files
+
+- `src/main/resources/schema.sql` creates the four tables and their constraints.
+- `src/main/resources/seed.sql` adds sample genres, users, games, and libraries.
 - `Database.java` opens SQLite and enables foreign-key checks.
-- `SchemaInitializer.java` applies the schema and seed scripts.
-- `GameCatalogDao.java` contains prepared queries for browsing and reports.
-- `GameDao.java` and `DeveloperDao.java` keep catalog CRUD SQL out of the menu.
-- `PROJECT_PLAN.md` contains the ER diagram, normalization notes, SQL examples,
-  and the assignment sequence.
+- `GameDao.java`, `UserDao.java`, and `GameCatalogDao.java` separate SQL from
+  the menu.
+- `PROJECT_PLAN.md` contains the ER diagram, normalization notes, and milestone
+  sequence.

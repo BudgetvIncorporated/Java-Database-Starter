@@ -20,7 +20,6 @@ public final class GameCatalogDao {
                        ge.genre_name
                 FROM games AS g
                 JOIN genres AS ge ON ge.genre_id = g.genre_id
-                ORDER BY g.title COLLATE NOCASE
                 """;
         List<Game> games = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(sql);
@@ -110,6 +109,26 @@ public final class GameCatalogDao {
             }
         }
         return users;
+    }
+
+    public List<UserGameCount> countSavedGamesByUser() throws SQLException {
+        String sql = """
+                SELECT u.username, COUNT(ug.game_id) AS saved_games
+                FROM users AS u
+                LEFT JOIN user_games AS ug ON ug.user_id = u.user_id
+                GROUP BY u.user_id, u.username
+                ORDER BY saved_games DESC, u.username COLLATE NOCASE
+                """;
+        List<UserGameCount> counts = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                counts.add(new UserGameCount(
+                        resultSet.getString("username"),
+                        resultSet.getInt("saved_games")));
+            }
+        }
+        return counts;
     }
 
     private List<GamePlayerEntry> queryGamePlayers(String sql, String searchTerm)

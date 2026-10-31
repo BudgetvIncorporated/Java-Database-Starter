@@ -50,7 +50,10 @@ public final class Main {
                     case 9 -> deleteGame(input, catalog, games);
                     case 10 -> addGameToUser(input, catalog, users);
                     case 11 -> openGame(input, catalog);
-                    default -> System.out.println("Choose a number from 0 to 11.");
+                    case 12 -> showSavedGameCounts(catalog.countSavedGamesByUser());
+                    case 13 -> showGamesSortedByTitle(
+                            GameAlgorithms.sortByTitle(catalog.findAllGames()));
+                    default -> System.out.println("Choose a number from 0 to 13.");
                 }
             } catch (SQLException exception) {
                 System.out.println("The database could not complete that action: "
@@ -75,6 +78,8 @@ public final class Main {
         System.out.println("9. Delete a game");
         System.out.println("10. Add a game to a user's library");
         System.out.println("11. Open a game's saved link");
+        System.out.println("12. Show saved-game counts per user");
+        System.out.println("13. Sort games by title (Java insertion sort)");
         System.out.println("0. Exit");
     }
 
@@ -105,6 +110,27 @@ public final class Main {
         if (genre != null) {
             showGamePlayers(catalog.findGamePlayersByGenre(genre.id()));
         }
+    }
+
+    private static void showSavedGameCounts(List<UserGameCount> counts) {
+        if (counts.isEmpty()) {
+            System.out.println("No users are available.");
+            return;
+        }
+        System.out.printf("%-24s %s%n", "Username", "Saved games");
+        System.out.println("-".repeat(38));
+        for (UserGameCount count : counts) {
+            System.out.printf("%-24s %d%n", count.username(), count.savedGames());
+        }
+    }
+
+    private static void showGamesSortedByTitle(List<Game> games) {
+        if (games.isEmpty()) {
+            System.out.println("No games are available.");
+            return;
+        }
+        System.out.println("Games sorted by title using Java insertion sort:");
+        showGamesForSelection(games);
     }
 
     private static void addUser(Scanner input, UserDao users) throws SQLException {

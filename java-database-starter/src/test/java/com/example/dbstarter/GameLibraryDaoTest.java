@@ -115,4 +115,31 @@ public class GameLibraryDaoTest {
         users.addGameToLibrary(saved);
         assertThrows(SQLException.class, () -> users.addGameToLibrary(saved));
     }
+
+    @Test
+    public void savedGameCountsIncludeUsersWithNoGames() throws Exception {
+        users.create(new User(0, "empty_library_user", "empty_library@example.com"));
+
+        List<UserGameCount> counts = catalog.countSavedGamesByUser();
+
+        assertTrue(counts.contains(new UserGameCount("player01", 2)));
+        assertTrue(counts.contains(new UserGameCount("empty_library_user", 0)));
+    }
+
+    @Test
+    public void titleSortUsesJavaInsertionSortWithoutChangingInput() {
+        Game zulu = new Game(
+                3, 7, "zulu", "https://example.com/zulu", "2025-01-03", "Puzzle");
+        Game alpha = new Game(
+                1, 7, "Alpha", "https://example.com/alpha", "2025-01-01", "Puzzle");
+        Game bravo = new Game(
+                2, 7, "BRAVO", "https://example.com/bravo", "2025-01-02", "Puzzle");
+        List<Game> original = List.of(zulu, alpha, bravo);
+
+        List<Game> sorted = GameAlgorithms.sortByTitle(original);
+
+        assertEquals(List.of("Alpha", "BRAVO", "zulu"),
+                sorted.stream().map(Game::title).toList());
+        assertEquals("zulu", original.get(0).title());
+    }
 }
