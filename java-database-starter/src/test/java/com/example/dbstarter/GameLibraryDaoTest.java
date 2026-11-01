@@ -117,6 +117,31 @@ public class GameLibraryDaoTest {
     }
 
     @Test
+    public void databaseRejectsDuplicateUsersAndMissingReferences() throws Exception {
+        assertThrows(SQLException.class,
+                () -> users.create(new User(0, "player01", "another@example.com")));
+        assertThrows(SQLException.class,
+                () -> users.create(new User(0, "another_player", "player01@example.com")));
+        assertThrows(SQLException.class,
+                () -> users.addGameToLibrary(new UserGame(999, 1, null, 0)));
+        assertThrows(SQLException.class,
+                () -> users.addGameToLibrary(new UserGame(1, 999, null, 0)));
+    }
+
+    @Test
+    public void daoReturnsEmptyOrFalseForMissingRecords() throws Exception {
+        assertFalse(games.findById(999).isPresent());
+        assertFalse(games.update(new Game(
+                999, 7, "Missing Game", "https://example.com/missing",
+                "2025-01-05", "Puzzle")));
+        assertFalse(games.delete(999));
+
+        assertFalse(users.findById(999).isPresent());
+        assertFalse(users.update(new User(999, "missing_user", "missing@example.com")));
+        assertFalse(users.delete(999));
+    }
+
+    @Test
     public void libraryStatsIncludeCountSumAverageAndUsersWithNoGames() throws Exception {
         int reportUserId = users.create(new User(0, "report_user", "report@example.com"));
         users.addGameToLibrary(new UserGame(reportUserId, 1, 5, 3));

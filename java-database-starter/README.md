@@ -115,6 +115,19 @@ HAVING COUNT(ug.rating) >= 2
 ORDER BY average_rating DESC, rating_count DESC;
 ```
 
+## Input validation, errors, and edge cases
+
+The console checks for blank required text, basic email format, HTTP/HTTPS game
+links, real `YYYY-MM-DD` dates, listed IDs, ratings from 1 to 5, and non-negative
+play counts. Non-numeric menu choices and invalid field values prompt again.
+Database errors such as duplicate usernames, duplicate emails, duplicate saved
+games, or missing foreign-key records are reported without ending the menu.
+
+Run `mvn test` to check validation and database edge cases, including malformed
+email/URL/date values, blank text, duplicate records, missing references,
+nonexistent update/delete IDs, SQL-like search text, and users with no saved
+games.
+
 ## Schema reflection
 
 I kept one genre per game because that matches the approved diagram and keeps
