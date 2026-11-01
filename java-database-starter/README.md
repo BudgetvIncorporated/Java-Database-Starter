@@ -26,7 +26,7 @@ without duplicating its sample records. To choose another database file, add
 - Add a game to a user's library with an optional 1–5 rating and play count.
 - Show which users saved which games; search by title and filter by genre.
 - Open a selected game's saved link.
-- Show saved-game counts per user using a `GROUP BY` query.
+- Show each user's saved-game count, total play count, and average rating.
 - Sort games by title in Java using insertion sort.
 - Validate user input and use prepared statements for SQL values.
 
@@ -80,10 +80,13 @@ ORDER BY g.title;
 
 This query joins four tables.
 
-### 3. How many games has each user saved?
+### 3. What are each user's saved-game count, total plays, and average rating?
 
 ```sql
-SELECT u.username, COUNT(ug.game_id) AS saved_games
+SELECT u.username,
+       COUNT(ug.game_id) AS saved_games,
+       COALESCE(SUM(ug.play_count), 0) AS total_plays,
+       ROUND(AVG(ug.rating), 2) AS average_rating
 FROM users AS u
 LEFT JOIN user_games AS ug ON ug.user_id = u.user_id
 GROUP BY u.user_id, u.username
@@ -128,8 +131,8 @@ would better represent games that span genres.
    list. Explain that the query combines `users`, `user_games`, and `games`.
 3. **2:00–3:00 — Show search and filtering.** Use options 2 and 3, and point out
    that entered values are passed through prepared statements.
-4. **3:00–4:00 — Show the reports.** Use option 12 for the `GROUP BY` count and
-   option 13 for the Java insertion sort.
+4. **3:00–4:00 — Show the reports.** Use option 12 for the `GROUP BY` report
+   with `COUNT`, `SUM`, and `AVG`; option 13 demonstrates the Java insertion sort.
 5. **4:00–5:00 — Demonstrate CRUD and validation.** Add, edit, and remove a
    temporary game or user, then mention the DAO tests. Avoid changing the seeded
    sample records during the demo.
@@ -143,5 +146,6 @@ would better represent games that span genres.
   implement it.
 - `GameCatalogDao.java` contains prepared queries for lists and reports.
 - `GameAlgorithms.java` sorts titles in Java.
+- `UserLibraryStats.java` holds the grouped count, play total, and average rating.
 - `PROJECT_PLAN.md` contains the ER diagram, normalization notes, and milestone
   sequence.

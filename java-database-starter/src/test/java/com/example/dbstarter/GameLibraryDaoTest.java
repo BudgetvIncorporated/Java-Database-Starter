@@ -117,13 +117,21 @@ public class GameLibraryDaoTest {
     }
 
     @Test
-    public void savedGameCountsIncludeUsersWithNoGames() throws Exception {
+    public void libraryStatsIncludeCountSumAverageAndUsersWithNoGames() throws Exception {
+        int reportUserId = users.create(new User(0, "report_user", "report@example.com"));
+        users.addGameToLibrary(new UserGame(reportUserId, 1, 5, 3));
+        users.addGameToLibrary(new UserGame(reportUserId, 2, 3, 7));
         users.create(new User(0, "empty_library_user", "empty_library@example.com"));
 
-        List<UserGameCount> counts = catalog.countSavedGamesByUser();
+        List<UserLibraryStats> stats = catalog.summarizeLibraryByUser();
 
-        assertTrue(counts.contains(new UserGameCount("player01", 2)));
-        assertTrue(counts.contains(new UserGameCount("empty_library_user", 0)));
+        assertTrue(stats.contains(new UserLibraryStats("report_user", 2, 10, 4.0)));
+        assertTrue(stats.contains(new UserLibraryStats("empty_library_user", 0, 0, null)));
+    }
+
+    @Test
+    public void searchTreatsSqlInjectionTextAsLiteral() throws Exception {
+        assertTrue(catalog.searchGamePlayers("x' OR 1=1 --").isEmpty());
     }
 
     @Test

@@ -50,7 +50,7 @@ user libraries, and reports. It supports full CRUD for games and users.
 
 1. Which games belong to a selected genre?
 2. Which games has a user saved, and what are their ratings and play counts?
-3. How many games has each user saved?
+3. What are each user's saved-game count, total plays, and average rating?
 4. Which games have the highest average rating?
 
 Example SQL answers:
@@ -72,8 +72,11 @@ JOIN genres AS ge ON ge.genre_id = g.genre_id
 WHERE u.username = 'player01'
 ORDER BY g.title;
 
--- 3. Number of saved games per user.
-SELECT u.username, COUNT(ug.game_id) AS saved_games
+-- 3. Saved-game count, total plays, and average rating per user.
+SELECT u.username,
+       COUNT(ug.game_id) AS saved_games,
+       COALESCE(SUM(ug.play_count), 0) AS total_plays,
+       ROUND(AVG(ug.rating), 2) AS average_rating
 FROM users AS u
 LEFT JOIN user_games AS ug ON ug.user_id = u.user_id
 GROUP BY u.user_id, u.username
@@ -90,8 +93,9 @@ ORDER BY average_rating DESC, rating_count DESC;
 ```
 
 The second query satisfies the three-or-more-table JOIN requirement. The third
-demonstrates `GROUP BY` and `COUNT`; the menu includes this report. The game
-catalog is sorted in Java with insertion sort for the algorithm requirement.
+demonstrates `GROUP BY` with `COUNT`, `SUM`, and `AVG`; the menu includes this
+report. The game catalog is sorted in Java with insertion sort for the algorithm
+requirement.
 
 ## Work through the assignment in this order
 
@@ -120,7 +124,7 @@ catalog is sorted in Java with insertion sort for the algorithm requirement.
 
 - Build a menu-driven app to browse, search, and manage the library.
 - Include at least two JOIN queries; one must span three or more tables.
-- Add a `GROUP BY` query with an aggregate such as `COUNT` or `AVG`.
+- Add a `GROUP BY` report using `COUNT`, `SUM`, and `AVG`.
 - Add a Java algorithm, such as sorting games by title or release date.
 - Validate input and handle missing records and database errors.
 - Open links with the user's browser rather than trying to host games in the app.

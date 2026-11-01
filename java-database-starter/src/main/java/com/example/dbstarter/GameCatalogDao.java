@@ -111,24 +111,31 @@ public final class GameCatalogDao {
         return users;
     }
 
-    public List<UserGameCount> countSavedGamesByUser() throws SQLException {
+    public List<UserLibraryStats> summarizeLibraryByUser() throws SQLException {
         String sql = """
-                SELECT u.username, COUNT(ug.game_id) AS saved_games
+                SELECT u.username,
+                       COUNT(ug.game_id) AS saved_games,
+                       COALESCE(SUM(ug.play_count), 0) AS total_plays,
+                       ROUND(AVG(ug.rating), 2) AS average_rating
                 FROM users AS u
                 LEFT JOIN user_games AS ug ON ug.user_id = u.user_id
                 GROUP BY u.user_id, u.username
                 ORDER BY saved_games DESC, u.username COLLATE NOCASE
                 """;
-        List<UserGameCount> counts = new ArrayList<>();
+        List<UserLibraryStats> stats = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
-                counts.add(new UserGameCount(
+                double average = resultSet.getDouble("average_rating");
+                Double averageRating = resultSet.wasNull() ? null : average;
+                stats.add(new UserLibraryStats(
                         resultSet.getString("username"),
-                        resultSet.getInt("saved_games")));
+                        resultSet.getInt("saved_games"),
+                        resultSet.getInt("total_plays"),
+                        averageRating));
             }
         }
-        return counts;
+        return stats;
     }
 
     private List<GamePlayerEntry> queryGamePlayers(String sql, String searchTerm)

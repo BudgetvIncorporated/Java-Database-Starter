@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -50,7 +51,7 @@ public final class Main {
                     case 9 -> deleteGame(input, catalog, games);
                     case 10 -> addGameToUser(input, catalog, users);
                     case 11 -> openGame(input, catalog);
-                    case 12 -> showSavedGameCounts(catalog.countSavedGamesByUser());
+                    case 12 -> showLibraryStats(catalog.summarizeLibraryByUser());
                     case 13 -> showGamesSortedByTitle(
                             GameAlgorithms.sortByTitle(catalog.findAllGames()));
                     default -> System.out.println("Choose a number from 0 to 13.");
@@ -78,7 +79,7 @@ public final class Main {
         System.out.println("9. Delete a game");
         System.out.println("10. Add a game to a user's library");
         System.out.println("11. Open a game's saved link");
-        System.out.println("12. Show saved-game counts per user");
+        System.out.println("12. Show library statistics (COUNT, SUM, AVG)");
         System.out.println("13. Sort games by title (Java insertion sort)");
         System.out.println("0. Exit");
     }
@@ -112,15 +113,23 @@ public final class Main {
         }
     }
 
-    private static void showSavedGameCounts(List<UserGameCount> counts) {
-        if (counts.isEmpty()) {
+    private static void showLibraryStats(List<UserLibraryStats> stats) {
+        if (stats.isEmpty()) {
             System.out.println("No users are available.");
             return;
         }
-        System.out.printf("%-24s %s%n", "Username", "Saved games");
-        System.out.println("-".repeat(38));
-        for (UserGameCount count : counts) {
-            System.out.printf("%-24s %d%n", count.username(), count.savedGames());
+        System.out.printf("%-22s %10s %12s %12s%n",
+                "Username", "Games saved", "Total plays", "Avg rating");
+        System.out.println("-".repeat(60));
+        for (UserLibraryStats userStats : stats) {
+            String averageRating = userStats.averageRating() == null
+                    ? "unrated"
+                    : String.format(Locale.ROOT, "%.2f", userStats.averageRating());
+            System.out.printf("%-22s %10d %12d %12s%n",
+                    userStats.username(),
+                    userStats.savedGames(),
+                    userStats.totalPlayCount(),
+                    averageRating);
         }
     }
 
