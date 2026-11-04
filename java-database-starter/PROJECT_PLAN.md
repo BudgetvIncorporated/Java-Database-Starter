@@ -43,8 +43,8 @@ one game, so those values belong in `user_games`, not directly in `games` or
 5. View one user's saved games, ratings, and play counts.
 6. Add, edit, and delete games and users.
 
-The console menu covers browsing, searching, genre filtering, opening links,
-user libraries, and reports. It supports full CRUD for games and users.
+The Swing interface covers browsing, searching, genre filtering, opening
+links, user libraries, and reports. It supports full CRUD for games and users.
 
 ## Questions the database can answer
 
@@ -122,7 +122,7 @@ requirement.
 
 ### Weeks 4–5 — Application
 
-- Build a menu-driven app to browse, search, and manage the library.
+- Build a Java Swing app to browse, search, and manage the library.
 - Include at least two JOIN queries; one must span three or more tables.
 - Add a `GROUP BY` report using `COUNT`, `SUM`, and `AVG`.
 - Add a Java algorithm, such as sorting games by title or release date.

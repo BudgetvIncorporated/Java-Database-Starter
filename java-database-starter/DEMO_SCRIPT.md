@@ -1,8 +1,13 @@
-# Game Library Demo Speaking Notes
+# Game Library Swing Demo
 
-## Before the presentation
+## Before presenting
 
-From a terminal, run:
+1. Open the **Game Library Swing** workflow so the application window appears
+   in Replit's VNC pane.
+2. Wait until the catalog and sample data finish loading.
+3. Keep the presentation database intact; do not delete the `.db` file.
+
+If running from a desktop terminal instead:
 
 ```bash
 cd java-database-starter
@@ -10,51 +15,53 @@ mvn test
 mvn compile exec:java
 ```
 
-The app creates `game-library.db` and seeds it the first time it runs. Keep the
-database available when presenting; the generated database file is local and is
-not committed to GitHub.
+## Five-minute walkthrough
 
-## Five-minute script
+### 0:00–1:00 — Purpose and schema
 
-### 0:00–1:00 — Introduce the schema
+> “This is a Java Swing game library backed by SQLite. It stores games, genres,
+> users, and `user_games`. One genre can classify many games. Users and games
+> have a many-to-many relationship, so the junction table stores saved games,
+> ratings, and play counts.”
 
-> “This project is a game library built with Java and SQLite. It has four
-> tables: `genres`, `games`, `users`, and `user_games`. A genre can classify
-> multiple games. Users and games have a many-to-many relationship, which is
-> represented by the `user_games` junction table. Ratings and play counts are
-> stored on that relationship because they belong to a user's copy of a game.”
+Point to the four-table schema in the project README or slides.
 
-### 1:00–2:00 — Show the joined list
+### 1:00–2:00 — Browse and search
 
-> “I’ll choose option 1. This list comes from a query that joins `users`,
-> `user_games`, and `games`, so it shows which users have saved which games.
-> The genre filter joins the `genres` table as well.”
+Open the **Game catalog** tab. Search a title such as `Portal`, clear the
+search, then filter by a genre. Explain that game links point to external pages;
+the project catalog does not host game files. Use **Sort by title (Java)** to
+show the custom insertion-sort algorithm.
 
-### 2:00–3:00 — Show search and safe input
+### 2:00–3:00 — JOIN and aggregate reports
 
-> “Options 2 and 3 let me search by title and filter by genre. The values I
-> enter are bound through JDBC `PreparedStatement` parameters, rather than
-> being pasted into SQL. That keeps search text from being interpreted as SQL.”
+Open **Library & reports**. Show the **Games & players (JOIN)** report, then
+the **User statistics (GROUP BY)** report.
 
-Search for a title such as `Mario`, then use the genre filter.
+> “The first report joins the junction table to games and users. The second
+> groups rows by user and calculates saved-game count, total plays, and average
+> rating using `COUNT`, `SUM`, and `AVG`.”
 
-### 3:00–4:00 — Show SQL aggregates and the Java algorithm
+### 3:00–4:00 — CRUD and input checks
 
-> “Option 12 groups the library by user. It uses `COUNT` for saved games,
-> `SUM` for total play count, and `AVG` for the average rating. Users without
-> saved games still appear with zero counts. Option 13 sorts game titles with
-> insertion sort written in Java.”
+In **Users**, add a temporary user with a unique username and email, edit the
+username, then delete that same user. Confirm the deletion when prompted.
 
-Choose options 12 and 13.
+In **Game catalog**, add a temporary game with a valid HTTP/HTTPS link and date
+in `YYYY-MM-DD` format; edit it and delete it. Point out the validation dialog
+if a required field or date is invalid.
 
-### 4:00–5:00 — Show CRUD and close
+### 4:00–5:00 — Save a library entry and close
 
-> “The menu supports creating, reading, updating, and deleting games and users.
-> I keep the SQL in DAO classes so the menu and data access stay separate.
-> The tests exercise full CRUD for both entities, as well as the aggregate
-> report and sorting algorithm. This completes the database-backed game
-> library.”
+Use **Add game to a user's library** to add a game not already saved by that
+user, with a rating and play count. Refresh the reports and show the new row.
 
-If demonstrating a write live, create a temporary user with option 4, then edit
-and delete that same user with options 5 and 6. Do not delete seeded sample
-records during the presentation.
+> “The UI uses prepared statements through the DAO classes. That keeps SQL
+> separate from the interface and avoids inserting user input directly into
+> query text.”
+
+## Reminder
+
+Make sure the Swing window is visible in VNC before class. The database is
+stored locally in `game-library.db`; keep that file if you want to preserve
+changes between runs.
