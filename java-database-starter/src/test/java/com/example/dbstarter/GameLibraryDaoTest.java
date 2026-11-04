@@ -106,6 +106,49 @@ public class GameLibraryDaoTest {
     }
 
     @Test
+    public void savedGameCanBeUpdatedAndRemovedWithoutDeletingRelatedRecords() throws Exception {
+        SavedGameEntry saved = users.findSavedGames().stream()
+                .filter(entry -> entry.userId() == 1 && entry.gameId() == 1)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(Integer.valueOf(5), saved.rating());
+        assertEquals(28, saved.playCount());
+
+        assertTrue(users.updateSavedGame(new UserGame(1, 1, 3, 31)));
+        SavedGameEntry updated = users.findSavedGames().stream()
+                .filter(entry -> entry.userId() == 1 && entry.gameId() == 1)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(Integer.valueOf(3), updated.rating());
+        assertEquals(31, updated.playCount());
+
+        assertTrue(users.removeGameFromLibrary(1, 1));
+        assertFalse(users.findSavedGames().stream()
+                .anyMatch(entry -> entry.userId() == 1 && entry.gameId() == 1));
+        assertTrue(users.findById(1).isPresent());
+        assertTrue(games.findById(1).isPresent());
+        assertTrue(users.findSavedGames().stream()
+                .anyMatch(entry -> entry.userId() == 2 && entry.gameId() == 1));
+    }
+
+    @Test
+    public void savedGameMutationsReturnFalseWhenRelationshipDoesNotExist() throws Exception {
+        assertFalse(users.updateSavedGame(new UserGame(1, 999, null, 0)));
+        assertFalse(users.removeGameFromLibrary(1, 999));
+    }
+
+    @Test
+    public void savedGameCanBeUpdatedWithoutRating() throws Exception {
+        assertTrue(users.updateSavedGame(new UserGame(1, 1, null, 0)));
+        SavedGameEntry updated = users.findSavedGames().stream()
+                .filter(entry -> entry.userId() == 1 && entry.gameId() == 1)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(null, updated.rating());
+        assertEquals(0, updated.playCount());
+    }
+
+    @Test
     public void databaseRejectsDuplicateGameForOneUser() throws Exception {
         int userId = users.create(new User(0, "duplicate_test_player", "duplicate_test@example.com"));
         int gameId = games.create(new Game(

@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public final class UserDao implements CrudDao<User> {
@@ -92,6 +94,61 @@ public final class UserDao implements CrudDao<User> {
             }
             statement.setInt(4, userGame.playCount());
             statement.executeUpdate();
+        }
+    }
+
+    public List<SavedGameEntry> findSavedGames() throws SQLException {
+        String sql = """
+                SELECT ug.user_id, ug.game_id, u.username, g.title,
+                       ug.rating, ug.play_count
+                FROM user_games AS ug
+                JOIN users AS u ON u.user_id = ug.user_id
+                JOIN games AS g ON g.game_id = ug.game_id
+                ORDER BY u.username COLLATE NOCASE, g.title COLLATE NOCASE
+                """;
+        List<SavedGameEntry> entries = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                int ratingValue = resultSet.getInt("rating");
+                Integer rating = resultSet.wasNull() ? null : ratingValue;
+                entries.add(new SavedGameEntry(
+                        resultSet.getInt("user_id"),
+                        resultSet.getInt("game_id"),
+                        resultSet.getString("username"),
+                        resultSet.getString("title"),
+                        rating,
+                        resultSet.getInt("play_count")));
+            }
+        }
+        return entries;
+    }
+
+    public boolean updateSavedGame(UserGame userGame) throws SQLException {
+        String sql = """
+                UPDATE user_games
+                SET rating = ?, play_count = ?
+                WHERE user_id = ? AND game_id = ?
+                """;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            if (userGame.rating() == null) {
+                statement.setNull(1, Types.INTEGER);
+            } else {
+                statement.setInt(1, userGame.rating());
+            }
+            statement.setInt(2, userGame.playCount());
+            statement.setInt(3, userGame.userId());
+            statement.setInt(4, userGame.gameId());
+            return statement.executeUpdate() == 1;
+        }
+    }
+
+    public boolean removeGameFromLibrary(int userId, int gameId) throws SQLException {
+        String sql = "DELETE FROM user_games WHERE user_id = ? AND game_id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, userId);
+            statement.setInt(2, gameId);
+            return statement.executeUpdate() == 1;
         }
     }
 }

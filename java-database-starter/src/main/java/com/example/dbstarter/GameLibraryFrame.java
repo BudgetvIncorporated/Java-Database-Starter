@@ -39,14 +39,14 @@ final class GameLibraryFrame extends JFrame {
     private final UserDao users;
     private final JTable gameTable = table();
     private final JTable userTable = table();
-    private final JTable playersTable = table();
+    private final JTable savedGamesTable = table();
     private final JTable statsTable = table();
     private final JTextField searchField = new JTextField(22);
     private final JComboBox<GenreChoice> genreFilter = new JComboBox<>();
     private final JLabel status = new JLabel("Connected to your local SQLite game library.");
     private List<Game> visibleGames = List.of();
     private List<User> visibleUsers = List.of();
-    private List<GamePlayerEntry> visiblePlayers = List.of();
+    private List<SavedGameEntry> visibleSavedGames = List.of();
     private List<UserLibraryStats> visibleStats = List.of();
 
     GameLibraryFrame(Connection connection) {
@@ -183,16 +183,22 @@ final class GameLibraryFrame extends JFrame {
         JPanel panel = panel();
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 9, 5));
         top.setOpaque(false);
-        JButton saveGame = button("Add game to a user's library", true);
+        JButton saveGame = button("Add saved game", true);
         saveGame.addActionListener(event -> addGameToUser());
+        JButton editSavedGame = button("Edit selected", false);
+        editSavedGame.addActionListener(event -> editSavedGame());
+        JButton removeSavedGame = button("Remove selected", false);
+        removeSavedGame.addActionListener(event -> removeSavedGame());
         JButton refresh = button("Refresh reports", false);
         refresh.addActionListener(event -> withDatabaseErrors(this::refreshReports));
         top.add(saveGame);
+        top.add(editSavedGame);
+        top.add(removeSavedGame);
         top.add(refresh);
         panel.add(top, BorderLayout.NORTH);
 
         JTabbedPane reportTabs = new JTabbedPane();
-        reportTabs.addTab("Games & players (JOIN)", new JScrollPane(playersTable));
+        reportTabs.addTab("Saved games (JOIN)", new JScrollPane(savedGamesTable));
         reportTabs.addTab("User statistics (GROUP BY)", new JScrollPane(statsTable));
         panel.add(reportTabs, BorderLayout.CENTER);
         return panel;
@@ -254,10 +260,11 @@ final class GameLibraryFrame extends JFrame {
     }
 
     private void refreshReports() throws SQLException {
-        visiblePlayers = catalog.findGamePlayers();
-        fill(playersTable, new String[]{"Game", "Player"});
-        for (GamePlayerEntry entry : visiblePlayers) {
-            addRow(playersTable, entry.gameTitle(), entry.username());
+        visibleSavedGames = users.findSavedGames();
+        fill(savedGamesTable, new String[]{"User", "Game", "Rating", "Play count"});
+        for (SavedGameEntry entry : visibleSavedGames) {
+            addRow(savedGamesTable, entry.username(), entry.gameTitle(),
+                    entry.rating() == null ? "Not rated" : entry.rating(), entry.playCount());
         }
 
         visibleStats = catalog.summarizeLibraryByUser();
@@ -376,18 +383,95 @@ final class GameLibraryFrame extends JFrame {
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
                     != JOptionPane.OK_OPTION) return;
 
-            Integer rating = null;
-            String ratingText = ratingField.getText().trim();
-            if (!ratingText.isEmpty()) {
-                rating = Integer.valueOf(ratingText);
-            }
-            int plays = Integer.parseInt(playsField.getText().trim());
+            UserGameInput input = userGameInput(ratingField, playsField);
             User user = ((UserChoice) userChoice.getSelectedItem()).user();
             Game game = ((GameChoice) gameChoice.getSelectedItem()).game();
-            users.addGameToLibrary(new UserGame(user.id(), game.id(), rating, plays));
+            users.addGameToLibrary(new UserGame(user.id(), game.id(), input.rating(), input.playCount()));
             refreshReports();
             status.setText(game.title() + " added to " + user.username() + "'s library.");
         });
+    }
+
+    private void editSavedGame() {
+        SavedGameEntry selected = selectedSavedGame();
+        if (selected == null) return;
+        JTextField ratingField = new JTextField(
+                selected.rating() == null ? "" : selected.rating().toString(), 5);
+        JTextField playsField = new JTextField(Integer.toString(selected.playCount()), 5);
+        JPanel fields = formPanel();
+        addField(fields, 0, "User", new JLabel(selected.username()));
+        addField(fields, 1, "Game", new JLabel(selected.gameTitle()));
+        addField(fields, 2, "Rating (1–5, optional)", ratingField);
+        addField(fields, 3, "Play count (0 or more)", playsField);
+
+        while (JOptionPane.showConfirmDialog(this, fields, "Edit saved game",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
+            try {
+                UserGameInput input = userGameInput(ratingField, playsField);
+                if (!users.updateSavedGame(new UserGame(selected.userId(), selected.gameId(),
+                        input.rating(), input.playCount()))) {
+                    showMessage("That saved game could not be found. Refresh and try again.",
+                            "Saved game not found");
+                    return;
+                }
+                refreshReports();
+                status.setText(selected.gameTitle() + " updated for "
+                        + selected.username() + ".");
+                return;
+            } catch (IllegalArgumentException exception) {
+                showMessage(exception.getMessage(), "Check saved-game details");
+            } catch (SQLException exception) {
+                showMessage("The database could not complete that action:\n"
+                        + friendlyDatabaseMessage(exception), "Database error");
+                return;
+            }
+        }
+    }
+
+    private void removeSavedGame() {
+        SavedGameEntry selected = selectedSavedGame();
+        if (selected == null) return;
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Remove \"" + selected.gameTitle() + "\" from "
+                        + selected.username() + "'s library? The game and user will remain.",
+                "Confirm saved-game removal", JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (answer != JOptionPane.YES_OPTION) return;
+        withDatabaseErrors(() -> {
+            if (!users.removeGameFromLibrary(selected.userId(), selected.gameId())) {
+                showMessage("That saved game could not be found. Refresh and try again.",
+                        "Saved game not found");
+                return;
+            }
+            refreshReports();
+            status.setText(selected.gameTitle() + " removed from "
+                    + selected.username() + "'s library.");
+        });
+    }
+
+    private UserGameInput userGameInput(JTextField ratingField, JTextField playsField) {
+        String ratingText = ratingField.getText().trim();
+        Integer rating = null;
+        if (!ratingText.isEmpty()) {
+            try {
+                rating = Integer.valueOf(ratingText);
+            } catch (NumberFormatException exception) {
+                throw new IllegalArgumentException("Rating must be a whole number from 1 to 5.");
+            }
+        }
+        int playCount;
+        try {
+            playCount = Integer.parseInt(playsField.getText().trim());
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Play count must be a whole number of 0 or more.");
+        }
+        if (rating != null && (rating < 1 || rating > 5)) {
+            throw new IllegalArgumentException("Rating must be from 1 to 5.");
+        }
+        if (playCount < 0) {
+            throw new IllegalArgumentException("Play count cannot be negative.");
+        }
+        return new UserGameInput(rating, playCount);
     }
 
     private void sortGames() {
@@ -506,6 +590,15 @@ final class GameLibraryFrame extends JFrame {
         return visibleUsers.get(userTable.convertRowIndexToModel(row));
     }
 
+    private SavedGameEntry selectedSavedGame() {
+        int row = savedGamesTable.getSelectedRow();
+        if (row < 0 || row >= visibleSavedGames.size()) {
+            showMessage("Select a saved game in the table first.", "No saved game selected");
+            return null;
+        }
+        return visibleSavedGames.get(savedGamesTable.convertRowIndexToModel(row));
+    }
+
     private Integer selectedGenreId() {
         GenreChoice choice = (GenreChoice) genreFilter.getSelectedItem();
         return choice == null ? null : choice.id();
@@ -622,6 +715,9 @@ final class GameLibraryFrame extends JFrame {
     }
 
     private record UserInput(String username, String email) {
+    }
+
+    private record UserGameInput(Integer rating, int playCount) {
     }
 
     @FunctionalInterface
