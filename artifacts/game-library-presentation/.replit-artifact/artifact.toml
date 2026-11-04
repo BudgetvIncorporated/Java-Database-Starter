@@ -1,0 +1,28 @@
+kind = "slides"
+previewPath = "/game-library-presentation/"
+title = "Game Library Project Presentation"
+description = "A classroom-ready 9-slide presentation covering the Java Swing game library, SQLite design, tools, working features, project timeline, demo, and reflection."
+version = "1.0.0"
+id = "artifacts/game-library-presentation"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/game-library-presentation/" ]
+localPort = 26110
+
+[services.development]
+run = "pnpm --filter @workspace/game-library-presentation run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/game-library-presentation", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/game-library-presentation/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26110"
+BASE_PATH = "/game-library-presentation/"

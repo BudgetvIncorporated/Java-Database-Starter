@@ -1,0 +1,74 @@
+[
+  {
+    "id": "4de98f2a-0ab8-4e44-b60b-1bf38fb4b217",
+    "position": 1,
+    "filepath": "src/pages/slides/Slide1.tsx",
+    "title": "Java SQLite Game Library",
+    "description": "A desktop app for browsing games and managing a personal library",
+    "speakerNotes": ""
+  },
+  {
+    "id": "40b7fc58-7f71-48cc-8aed-8df0399cdfd2",
+    "position": 2,
+    "filepath": "src/pages/slides/Slide2.tsx",
+    "title": "What works now",
+    "description": "Working features and current app status",
+    "speakerNotes": ""
+  },
+  {
+    "id": "16f8ad8d-d0d7-46c5-8f1b-a13c97005bb8",
+    "position": 3,
+    "filepath": "src/pages/slides/Slide3.tsx",
+    "title": "Project components and tools",
+    "description": "Desktop UI, database, build, repository, and VNC tools",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9145e4c8-b08b-4cf0-bd75-64ddb5becc18",
+    "position": 4,
+    "filepath": "src/pages/slides/Slide4.tsx",
+    "title": "Four tables, one game library",
+    "description": "Four-table relationship diagram and data model",
+    "speakerNotes": ""
+  },
+  {
+    "id": "6ca42867-98b4-4afc-918c-71df952cf8c9",
+    "position": 5,
+    "filepath": "src/pages/slides/Slide5.tsx",
+    "title": "What the database answers",
+    "description": "JOIN, GROUP BY, and aggregate reports",
+    "speakerNotes": ""
+  },
+  {
+    "id": "96acba1e-a092-4e4b-aaf5-9e1fbe973012",
+    "position": 6,
+    "filepath": "src/pages/slides/Slide6.tsx",
+    "title": "Safe input and Java algorithm",
+    "description": "Input validation, database rules, and insertion sort",
+    "speakerNotes": ""
+  },
+  {
+    "id": "16ea3162-bc90-42cc-8d0e-83a16ea08fbf",
+    "position": 7,
+    "filepath": "src/pages/slides/Slide7.tsx",
+    "title": "Project timeline to Friday",
+    "description": "Gantt-style schedule from completed work to presentation target",
+    "speakerNotes": ""
+  },
+  {
+    "id": "fb45f557-1e74-4a43-8e8c-e8c460167bd5",
+    "position": 8,
+    "filepath": "src/pages/slides/Slide8.tsx",
+    "title": "Five-minute app walkthrough",
+    "description": "A clear sequence for a classroom demo",
+    "speakerNotes": ""
+  },
+  {
+    "id": "d39efb0a-fd1f-4497-b292-a63c212bdd9e",
+    "position": 9,
+    "filepath": "src/pages/slides/Slide9.tsx",
+    "title": "Reflection: plan, test, explain",
+    "description": "Reflection, Friday preparation, and a future improvement",
+    "speakerNotes": ""
+  }
+]
