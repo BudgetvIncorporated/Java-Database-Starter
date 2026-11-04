@@ -6,7 +6,7 @@ export default function Slide9() {
       <div className="absolute right-[13vw] top-[29vh] h-[27vh] w-[8vw] rounded-[6vw_6vw_1vw_1vw] bg-[#f2f6ec]" />
       <div className="relative z-10 px-[7vw] pt-[8vh]">
         <h1 className="deck-title max-w-[61vw]">Reflection: plan, test, explain</h1>
-        <ul className="deck-copy mt-[5vh] flex max-w-[62vw] flex-col gap-[3vh]">
+        <ul className="deck-copy mt-[5vh] flex max-w-[55vw] flex-col gap-[3vh]">
           <li>Separating games, users, genres, and saved-game details keeps the data organized</li>
           <li>AI-assisted project tracking helped list finished work, next steps, and checks</li>
           <li>I am responsible for understanding the code and explaining it in my own words</li>
