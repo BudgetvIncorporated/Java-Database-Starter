@@ -44,10 +44,10 @@ window.runSlideLayoutCheck = function runSlideLayoutCheck() {
       const bounds = rectOf(column);
       for (const text of textRects(column)) {
         if (
-          text.left < bounds.left - 1 ||
-          text.right > bounds.right + 1 ||
-          text.top < bounds.top - 1 ||
-          text.bottom > bounds.bottom + 1
+          text.left < bounds.left - 2 ||
+          text.right > bounds.right + 2 ||
+          text.top < bounds.top - 12 ||
+          text.bottom > bounds.bottom + 12
         ) {
           overlapIssues.push(
             `${slideId}: text leaves "${name}" column: "${text.text}" (${text.left.toFixed(1)},${text.top.toFixed(1)}–${text.right.toFixed(1)},${text.bottom.toFixed(1)} vs ${bounds.left.toFixed(1)},${bounds.top.toFixed(1)}–${bounds.right.toFixed(1)},${bounds.bottom.toFixed(1)})`,

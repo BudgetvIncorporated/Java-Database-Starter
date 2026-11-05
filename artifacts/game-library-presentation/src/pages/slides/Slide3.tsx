@@ -1,7 +1,7 @@
 export default function Slide3() {
   return (
     <div className="w-screen h-screen overflow-hidden relative deck-frame">
-      <div className="absolute right-0 top-0 h-[29vh] w-[42vw] rounded-bl-[12vw] bg-[#b9df74]" data-layout-reserved="top-right accent panel" />
+      <div className="absolute right-0 top-0 h-[18vh] w-[35vw] rounded-bl-[12vw] bg-[#b9df74]" data-layout-reserved="top-right accent panel" />
       <div className="relative px-[7vw] pt-[8vh]">
         <h1 className="deck-title max-w-[80vw]" data-layout-content="title">Project components and tools</h1>
         <div className="mt-[5vh] grid grid-cols-[.32fr_1fr] gap-x-[3vw]">
