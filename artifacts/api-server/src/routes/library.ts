@@ -4,6 +4,7 @@ import {
   UpdateLibrarySavedGameBody, ListLibraryGamesQueryParams,
 } from "@workspace/api-zod";
 import { LibraryStore, gameSelect, playerSelect, savedSelect } from "../lib/library-store";
+import type { PostgresLibraryStore } from "../lib/library-postgres";
 import { libraryAccess, type IdentityResolver } from "../lib/library-management";
 
 class HttpError extends Error {
@@ -52,7 +53,7 @@ function savedInput(body: unknown, creating: boolean) {
   return result.data;
 }
 
-export function createLibraryRouter(store: LibraryStore, resolveIdentity?: IdentityResolver) {
+export function createLibraryRouter(store: LibraryStore | PostgresLibraryStore, resolveIdentity?: IdentityResolver) {
   const router = Router();
   const db = store.db;
   router.use((_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
@@ -74,118 +75,118 @@ export function createLibraryRouter(store: LibraryStore, resolveIdentity?: Ident
     } catch (error) { next(error); }
   });
   const route = (handler: RequestHandler): RequestHandler => (req, res, next) => {
-    try { handler(req, res, next); } catch (error) { next(error); }
+    try { Promise.resolve(handler(req, res, next)).catch(next); } catch (error) { next(error); }
   };
-  function game(gameId: number) {
-    const row = db.prepare(`${gameSelect} WHERE g.game_id = ?`).get(gameId);
+  async function game(gameId: number) {
+    const row = await db.prepare(`${gameSelect} WHERE g.game_id = ?`).get(gameId);
     if (!row) throw new HttpError(404, "Game not found. Refresh the catalog and try again.");
     return row;
   }
-  function player(userId: number) {
-    const row = db.prepare(`${playerSelect} WHERE user_id = ?`).get(userId);
+  async function player(userId: number) {
+    const row = await db.prepare(`${playerSelect} WHERE user_id = ?`).get(userId);
     if (!row) throw new HttpError(404, "Player not found. Refresh the player list and try again.");
     return row;
   }
-  function saved(userId: number, gameId: number) {
-    const row = db.prepare(`${savedSelect} WHERE ug.user_id = ? AND ug.game_id = ?`).get(userId, gameId);
+  async function saved(userId: number, gameId: number) {
+    const row = await db.prepare(`${savedSelect} WHERE ug.user_id = ? AND ug.game_id = ?`).get(userId, gameId);
     if (!row) throw new HttpError(404, "Saved game not found. Refresh the library and try again.");
     return row;
   }
-  router.get("/summary", route((_req, res) => {
-    res.json(db.prepare(`SELECT
+  router.get("/summary", route(async (_req, res) => {
+    res.json(await db.prepare(`SELECT
       (SELECT COUNT(*) FROM games) AS games,
       (SELECT COUNT(*) FROM users) AS players,
       (SELECT COUNT(*) FROM user_games) AS savedGames,
       (SELECT COALESCE(SUM(play_count), 0) FROM user_games) AS totalPlays,
       (SELECT COUNT(*) FROM genres) AS genres`).get());
   }));
-  router.get("/genres", route((_req, res) => {
-    res.json(db.prepare("SELECT genre_id AS id, genre_name AS name FROM genres ORDER BY genre_name COLLATE NOCASE").all());
+  router.get("/genres", route(async (_req, res) => {
+    res.json(await db.prepare("SELECT genre_id AS id, genre_name AS name FROM genres ORDER BY genre_name COLLATE NOCASE").all());
   }));
-  router.get("/games", route((req, res) => {
+  router.get("/games", route(async (req, res) => {
     const parsed = ListLibraryGamesQueryParams.safeParse(req.query);
     if (!parsed.success) throw new HttpError(400, "Invalid catalog filters.");
     const search = parsed.data.search?.trim() ?? "";
     const genreId = parsed.data.genreId;
     if (genreId !== undefined) id(genreId);
-    res.json(db.prepare(`${gameSelect}
+    res.json(await db.prepare(`${gameSelect}
       WHERE (? = '' OR instr(lower(g.title), lower(?)) > 0)
       AND (? IS NULL OR g.genre_id = ?) ORDER BY g.title COLLATE NOCASE, g.game_id`)
       .all(search, search, genreId ?? null, genreId ?? null));
   }));
-  router.post("/games", route((req, res) => {
+  router.post("/games", route(async (req, res) => {
     const input = gameInput(req.body);
-    const result = db.prepare("INSERT INTO games (genre_id, title, launch_url, release_date) VALUES (?, ?, ?, ?)")
+    const result = await db.prepare("INSERT INTO games (genre_id, title, launch_url, release_date) VALUES (?, ?, ?, ?)")
       .run(input.genreId, input.title, input.url, input.releaseDate);
-    res.status(201).json(game(Number(result.lastInsertRowid)));
+    res.status(201).json(await game(Number(result.lastInsertRowid)));
   }));
-  router.put("/games/:id", route((req, res) => {
+  router.put("/games/:id", route(async (req, res) => {
     const gameId = id(req.params.id);
-    game(gameId);
+    await game(gameId);
     const input = gameInput(req.body);
-    db.prepare("UPDATE games SET genre_id = ?, title = ?, launch_url = ?, release_date = ? WHERE game_id = ?")
+    await db.prepare("UPDATE games SET genre_id = ?, title = ?, launch_url = ?, release_date = ? WHERE game_id = ?")
       .run(input.genreId, input.title, input.url, input.releaseDate, gameId);
-    res.json(game(gameId));
+    res.json(await game(gameId));
   }));
-  router.delete("/games/:id", route((req, res) => {
+  router.delete("/games/:id", route(async (req, res) => {
     const gameId = id(req.params.id);
-    game(gameId);
-    db.prepare("DELETE FROM games WHERE game_id = ?").run(gameId);
+    await game(gameId);
+    await db.prepare("DELETE FROM games WHERE game_id = ?").run(gameId);
     res.status(204).end();
   }));
-  router.get("/players", route((_req, res) => {
-    res.json(db.prepare(`${playerSelect} ORDER BY username COLLATE NOCASE, user_id`).all());
+  router.get("/players", route(async (_req, res) => {
+    res.json(await db.prepare(`${playerSelect} ORDER BY username COLLATE NOCASE, user_id`).all());
   }));
-  router.post("/players", route((req, res) => {
+  router.post("/players", route(async (req, res) => {
     const input = playerInput(req.body);
-    const result = db.prepare("INSERT INTO users (username, email) VALUES (?, ?)").run(input.username, input.email);
-    res.status(201).json(player(Number(result.lastInsertRowid)));
+    const result = await db.prepare("INSERT INTO users (username, email) VALUES (?, ?)").run(input.username, input.email);
+    res.status(201).json(await player(Number(result.lastInsertRowid)));
   }));
-  router.put("/players/:id", route((req, res) => {
+  router.put("/players/:id", route(async (req, res) => {
     const userId = id(req.params.id);
-    player(userId);
+    await player(userId);
     const input = playerInput(req.body);
-    db.prepare("UPDATE users SET username = ?, email = ? WHERE user_id = ?").run(input.username, input.email, userId);
-    res.json(player(userId));
+    await db.prepare("UPDATE users SET username = ?, email = ? WHERE user_id = ?").run(input.username, input.email, userId);
+    res.json(await player(userId));
   }));
-  router.delete("/players/:id", route((req, res) => {
+  router.delete("/players/:id", route(async (req, res) => {
     const userId = id(req.params.id);
-    player(userId);
-    db.prepare("DELETE FROM users WHERE user_id = ?").run(userId);
+    await player(userId);
+    await db.prepare("DELETE FROM users WHERE user_id = ?").run(userId);
     res.status(204).end();
   }));
-  router.get("/saved", route((_req, res) => {
-    res.json(db.prepare(`${savedSelect} ORDER BY u.username COLLATE NOCASE, g.title COLLATE NOCASE`).all());
+  router.get("/saved", route(async (_req, res) => {
+    res.json(await db.prepare(`${savedSelect} ORDER BY u.username COLLATE NOCASE, g.title COLLATE NOCASE`).all());
   }));
-  router.post("/saved", route((req, res) => {
+  router.post("/saved", route(async (req, res) => {
     const input = savedInput(req.body, true);
     // The create schema requires both IDs; validate them independently at this boundary.
     const userId = id(req.body.userId);
     const gameId = id(req.body.gameId);
-    player(userId);
-    game(gameId);
-    db.prepare("INSERT INTO user_games (user_id, game_id, rating, play_count) VALUES (?, ?, ?, ?)")
+    await player(userId);
+    await game(gameId);
+    await db.prepare("INSERT INTO user_games (user_id, game_id, rating, play_count) VALUES (?, ?, ?, ?)")
       .run(userId, gameId, input.rating, input.playCount);
-    res.status(201).json(saved(userId, gameId));
+    res.status(201).json(await saved(userId, gameId));
   }));
-  router.put("/saved/:userId/:gameId", route((req, res) => {
+  router.put("/saved/:userId/:gameId", route(async (req, res) => {
     const userId = id(req.params.userId);
     const gameId = id(req.params.gameId);
-    saved(userId, gameId);
+    await saved(userId, gameId);
     const input = savedInput(req.body, false);
-    db.prepare("UPDATE user_games SET rating = ?, play_count = ? WHERE user_id = ? AND game_id = ?")
+    await db.prepare("UPDATE user_games SET rating = ?, play_count = ? WHERE user_id = ? AND game_id = ?")
       .run(input.rating, input.playCount, userId, gameId);
-    res.json(saved(userId, gameId));
+    res.json(await saved(userId, gameId));
   }));
-  router.delete("/saved/:userId/:gameId", route((req, res) => {
+  router.delete("/saved/:userId/:gameId", route(async (req, res) => {
     const userId = id(req.params.userId);
     const gameId = id(req.params.gameId);
-    saved(userId, gameId);
-    db.prepare("DELETE FROM user_games WHERE user_id = ? AND game_id = ?").run(userId, gameId);
+    await saved(userId, gameId);
+    await db.prepare("DELETE FROM user_games WHERE user_id = ? AND game_id = ?").run(userId, gameId);
     res.status(204).end();
   }));
-  router.get("/statistics", route((_req, res) => {
-    res.json(db.prepare(`SELECT u.user_id AS userId, u.username, COUNT(ug.game_id) AS savedGames,
+  router.get("/statistics", route(async (_req, res) => {
+    res.json(await db.prepare(`SELECT u.user_id AS userId, u.username, COUNT(ug.game_id) AS savedGames,
       COALESCE(SUM(ug.play_count), 0) AS totalPlayCount, AVG(ug.rating) AS averageRating
       FROM users u LEFT JOIN user_games ug ON ug.user_id = u.user_id
       GROUP BY u.user_id ORDER BY totalPlayCount DESC, u.username COLLATE NOCASE`).all());
@@ -194,15 +195,18 @@ export function createLibraryRouter(store: LibraryStore, resolveIdentity?: Ident
     if (res.headersSent) { _next(error); return; }
     if (error instanceof HttpError) { res.status(error.status).json({ error: error.message }); return; }
     const message = error instanceof Error ? error.message : "";
-    if (message.includes("UNIQUE constraint failed")) {
-      const friendly = message.includes("user_games")
+    const pgError = error as { code?: string; table?: string; constraint?: string };
+    if (message.includes("UNIQUE constraint failed") || pgError.code === "23505") {
+      const target = `${message} ${pgError.table ?? ""} ${pgError.constraint ?? ""}`;
+      const friendly = target.includes("user_games")
         ? "This game is already saved for this player."
-        : message.includes("users.")
+        : target.includes("users")
           ? "That username or email is already in use."
           : "A game with this title and release date already exists.";
       res.status(409).json({ error: friendly }); return;
     }
-    if (message.includes("FOREIGN KEY constraint") || message.includes("CHECK constraint")) {
+    if (message.includes("FOREIGN KEY constraint") || message.includes("CHECK constraint") ||
+        ["23503", "23514", "23502", "22003", "22007", "22008"].includes(pgError.code ?? "")) {
       res.status(400).json({ error: "Check your values and choose existing library records." }); return;
     }
     if (message.includes("database is locked") || message.includes("SQLITE_BUSY")) {

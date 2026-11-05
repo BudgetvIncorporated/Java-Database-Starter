@@ -1,11 +1,13 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
-import { findLibraryDatabase, LibraryStore } from "../lib/library-store";
+import { pool } from "@workspace/db";
+import { PostgresLibraryStore } from "../lib/library-postgres";
 import { createLibraryRouter } from "./library";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
-router.use("/library", createLibraryRouter(new LibraryStore(findLibraryDatabase())));
+export const libraryStore = new PostgresLibraryStore(pool);
+router.use("/library", createLibraryRouter(libraryStore));
 
 export default router;

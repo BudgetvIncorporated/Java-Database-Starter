@@ -70,9 +70,9 @@ export function Shell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="hidden md:block px-5 py-6 font-mono text-[10px] opacity-50 leading-relaxed">
-          Live SQLite records.
+          Durable browser records.
           <br />
-          Every change is written through.
+          SQLite backups for the Java app.
         </div>
       </aside>
       <main className="flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-6 md:py-10 max-w-[1280px]">

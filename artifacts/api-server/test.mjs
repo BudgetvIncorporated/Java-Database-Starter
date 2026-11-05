@@ -6,16 +6,17 @@ import { spawnSync } from "node:child_process";
 
 const directory = mkdtempSync(join(tmpdir(), "game-library-tests-"));
 try {
-  const bundle = join(directory, "library.test.cjs");
   await build({
-    entryPoints: ["src/test/library.test.ts"],
-    outfile: bundle,
+    entryPoints: ["src/test/library.test.ts", "src/test/library-postgres.test.ts"],
+    outdir: directory,
+    outExtension: { ".js": ".cjs" },
     platform: "node",
     format: "cjs",
     bundle: true,
     logLevel: "warning",
   });
-  const result = spawnSync(process.execPath, ["--test", bundle], { stdio: "inherit" });
+  const result = spawnSync(process.execPath, ["--test",
+    join(directory, "library.test.cjs"), join(directory, "library-postgres.test.cjs")], { stdio: "inherit" });
   process.exitCode = result.status ?? 1;
 } finally {
   rmSync(directory, { recursive: true, force: true });

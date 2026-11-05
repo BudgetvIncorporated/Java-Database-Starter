@@ -8,7 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node ./test.mjs"
+    "test": "node ./test.mjs",
+    "library:import": "node ./library-transfer.mjs"
   },
   "dependencies": {
     "@clerk/express": "^2.1.87",
@@ -20,6 +21,7 @@
     "drizzle-orm": "catalog:",
     "express": "^5.3.0",
     "http-proxy-middleware": "^4.2.1",
+    "pg": "^8.23.1",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0"
   },
@@ -28,6 +30,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
+    "@types/pg": "^8.23.1",
     "esbuild": "0.28.2",
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13.2.0",

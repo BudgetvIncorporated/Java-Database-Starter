@@ -1,5 +1,11 @@
 # Administrator-only library recovery
 
+**Scope:** This procedure restores the independent Java/SQLite library. The
+browser companion now uses durable PostgreSQL; its SQLite downloads remain
+compatible with this Java recovery tool. For browser import/recovery and
+production cutover, follow [BROWSER-PERSISTENCE.md](../BROWSER-PERSISTENCE.md).
+Restoring this Java file does not change browser records.
+
 Downloading **Back up database** only creates a SQLite snapshot. It never restores,
 merges, uploads, or replaces the library. Recovery deliberately has **no browser
 button or HTTP endpoint**. A public visitor, signed-in non-manager, or library
@@ -73,17 +79,15 @@ schema or edit the original download to force acceptance.
 ## 2. Stop every writer
 
 1. Stop **Game Library Swing** (close the desktop app and stop its workflow).
-2. Stop **artifacts/api-server: API Server**. Closing browser tabs alone is
-   insufficient: the server holds the shared SQLite connection.
-3. Stop **artifacts/game-library: web** for a clear maintenance window. Close
-   browser sessions and any SQLite viewers, scripts, scheduled jobs, or other
-   copies of the Java/API apps. Stop equivalent services/replicas on another
-   host environment, and disable automatic restarts for the duration.
-4. Do not run Maven's desktop launch or start API processes until recovery ends.
+2. Stop any **older SQLite-backed API copies**. The current PostgreSQL browser API
+   does not hold this Java file and need not stop for Java-only recovery.
+3. Close SQLite viewers, scripts, scheduled jobs, or other Java/SQLite API copies.
+   Stop equivalent writers on other hosts and disable automatic restarts.
+4. Do not run Maven's desktop launch or restart SQLite writers until recovery ends.
 
 The tool scans the database and journal/WAL file handles and refuses replacement
 if a same-account process still has them open. It also installs a persistent
-`game-library.db.recovery-lock` gate. Updated Java/API startup code checks that
+`game-library.db.recovery-lock` gate. Updated Java/SQLite-store startup checks that
 gate both before and after opening a connection. Older app versions and external
 SQLite tools do not honor it; keeping those stopped is the administrator's duty.
 
@@ -130,16 +134,14 @@ node java-database-starter/recovery/library-recovery.mjs resume \
 `resume` checks that no handles are open and validates the active library before
 removing the gate. Then:
 
-1. Restart **artifacts/api-server: API Server** and check its logs.
-2. Restart **artifacts/game-library: web**, reload the browser, and inspect the
-   public catalog/statistics and, as the approved manager, players/saved games.
-   Ensure the same `LIBRARY_MANAGER_EMAIL` configuration still applies; recovery
-   restores school data, not Clerk accounts, permissions, or environment settings.
-3. Restart **Game Library Swing** only if needed. The Java initializer now seeds
+1. Restart **Game Library Swing**. The Java initializer seeds
    only a new empty schema; it does not reinsert sample rows into a recovered
    library. An intentionally empty recovered library stays empty.
-4. Confirm representative records, ratings, play counts and counts. If incorrect,
+2. Confirm representative records, ratings, play counts and counts. If incorrect,
    stop services again and roll back before accepting further edits.
+3. Browser records remain independent. To transfer this recovered snapshot to the
+   browser, follow the explicit offline import in `BROWSER-PERSISTENCE.md`.
+   Recovery never restores Clerk identities, permissions, or environment settings.
 
 ## If a command fails or the process/machine stops
 
