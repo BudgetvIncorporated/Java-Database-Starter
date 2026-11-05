@@ -1,7 +1,9 @@
 package com.example.dbstarter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import javax.swing.JTable;
@@ -10,6 +12,18 @@ import javax.swing.table.TableRowSorter;
 import org.junit.Test;
 
 public class SavedGameFilterTest {
+    @Test
+    public void noMatchMessageOnlyAppearsWhenFiltersExcludeSavedGames() {
+        assertTrue(GameLibraryFrame.hasNoSavedGameMatches("unknown", "", 0, 4));
+        assertTrue(GameLibraryFrame.hasNoSavedGameMatches("", "unknown", 0, 4));
+        assertTrue(GameLibraryFrame.hasNoSavedGameMatches("Ava", "Tetris", 0, 4));
+        assertFalse(GameLibraryFrame.hasNoSavedGameMatches("Ava", "", 2, 4));
+        assertFalse(GameLibraryFrame.hasNoSavedGameMatches("", "", 4, 4));
+        assertFalse(GameLibraryFrame.hasNoSavedGameMatches(" ", "\t", 0, 4));
+        assertFalse(GameLibraryFrame.hasNoSavedGameMatches("unknown", "", 0, 0));
+        assertFalse(GameLibraryFrame.hasNoSavedGameMatches("", "", 0, 0));
+    }
+
     @Test
     public void filtersByPlayerAndTitleAndClearingShowsAllRows() {
         List<SavedGameEntry> savedGames = savedGames();

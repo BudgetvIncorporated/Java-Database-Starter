@@ -51,6 +51,8 @@ final class GameLibraryFrame extends JFrame {
     private final JTextField savedGameTitleFilter = new JTextField(12);
     private final JComboBox<GenreChoice> genreFilter = new JComboBox<>();
     private final JLabel savedGameFilterCount = new JLabel("All saved games");
+    private final JLabel savedGameNoMatches = new JLabel(
+            "No saved games match these filters. Change the player or game title, or choose Clear filters.");
     private final JLabel status = new JLabel("Connected to your local SQLite game library.");
     private TableRowSorter<DefaultTableModel> savedGamesSorter;
     private List<Game> visibleGames = List.of();
@@ -231,7 +233,14 @@ final class GameLibraryFrame extends JFrame {
         panel.add(controls, BorderLayout.NORTH);
 
         JTabbedPane reportTabs = new JTabbedPane();
-        reportTabs.addTab("Saved games (JOIN)", new JScrollPane(savedGamesTable));
+        JPanel savedGameResults = new JPanel(new BorderLayout(0, 8));
+        savedGameResults.setOpaque(false);
+        savedGameNoMatches.setForeground(INK);
+        savedGameNoMatches.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        savedGameNoMatches.setVisible(false);
+        savedGameResults.add(savedGameNoMatches, BorderLayout.NORTH);
+        savedGameResults.add(new JScrollPane(savedGamesTable), BorderLayout.CENTER);
+        reportTabs.addTab("Saved games (JOIN)", savedGameResults);
         reportTabs.addTab("User statistics (GROUP BY)", new JScrollPane(statsTable));
         panel.add(reportTabs, BorderLayout.CENTER);
         return panel;
@@ -694,6 +703,15 @@ final class GameLibraryFrame extends JFrame {
                 savedGamePlayerFilter.getText(), savedGameTitleFilter.getText()));
         savedGameFilterCount.setText(savedGamesTable.getRowCount() + " of "
                 + visibleSavedGames.size() + " saved games");
+        savedGameNoMatches.setVisible(hasNoSavedGameMatches(
+                savedGamePlayerFilter.getText(), savedGameTitleFilter.getText(),
+                savedGamesTable.getRowCount(), visibleSavedGames.size()));
+    }
+
+    static boolean hasNoSavedGameMatches(
+            String playerQuery, String titleQuery, int matchingCount, int totalCount) {
+        boolean hasFilter = !playerQuery.trim().isEmpty() || !titleQuery.trim().isEmpty();
+        return hasFilter && totalCount > 0 && matchingCount == 0;
     }
 
     private Integer selectedGenreId() {
