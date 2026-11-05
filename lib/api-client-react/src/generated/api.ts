@@ -21,6 +21,7 @@ import type {
 
 import type {
   HealthStatus,
+  LibraryError,
   LibraryGame,
   LibraryGameInput,
   LibraryGenre,
@@ -60,6 +61,86 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getDownloadLibraryBackupUrl = () => {
+
+
+
+
+  return `/api/library/backup`
+}
+
+/**
+ * Includes player emails. Restricted to same-origin browser requests in
+ * the private development workspace. Denied outside development until
+ * authenticated management access is configured. No backups are retained.
+ * @summary Download a consistent SQLite library backup
+ */
+export const downloadLibraryBackup = async ( options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadLibraryBackupUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadLibraryBackupQueryKey = () => {
+    return [
+    `/api/library/backup`
+    ] as const;
+    }
+
+
+export const getDownloadLibraryBackupQueryOptions = <TData = Awaited<ReturnType<typeof downloadLibraryBackup>>, TError = ErrorType<LibraryError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadLibraryBackup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadLibraryBackupQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadLibraryBackup>>> = ({ signal }) => downloadLibraryBackup({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadLibraryBackup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadLibraryBackupQueryResult = NonNullable<Awaited<ReturnType<typeof downloadLibraryBackup>>>
+export type DownloadLibraryBackupQueryError = ErrorType<LibraryError>
+
+
+/**
+ * @summary Download a consistent SQLite library backup
+ */
+
+export function useDownloadLibraryBackup<TData = Awaited<ReturnType<typeof downloadLibraryBackup>>, TError = ErrorType<LibraryError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadLibraryBackup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadLibraryBackupQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetLibrarySummaryUrl = () => {
 
@@ -1268,3 +1349,10 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+

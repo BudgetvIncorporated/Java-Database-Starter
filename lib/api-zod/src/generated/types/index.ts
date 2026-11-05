@@ -7,6 +7,7 @@
  */
 
 export * from './healthStatus';
+export * from './libraryError';
 export * from './libraryGame';
 export * from './libraryGameInput';
 export * from './libraryGenre';

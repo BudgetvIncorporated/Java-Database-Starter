@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { DatabaseSync, backup } from "node:sqlite";
@@ -106,6 +106,97 @@ test("browser API uses the existing SQLite model with CRUD, validation, cascades
         assert.equal(row?.plays, 2);
         assert(reopened.db.prepare("SELECT title FROM games WHERE game_id = ?").get(gameId));
       } finally { reopened.db.close(); }
+    });
+    await t.test("backup access fails closed without private-workspace management access", async () => {
+      const previous = process.env.NODE_ENV;
+      try {
+        for (const environment of ["production", "test", undefined]) {
+          if (environment === undefined) delete process.env.NODE_ENV;
+          else process.env.NODE_ENV = environment;
+          const response = await fetch(`${base}/backup`, { headers: { "Sec-Fetch-Site": "same-origin" } });
+          assert.equal(response.status, 403);
+          assert.equal(response.headers.get("cache-control"), "no-store");
+          assert.equal(response.headers.get("content-disposition"), null);
+          const data = await response.json() as { error: string };
+          assert.match(data.error, /management access/);
+        }
+        process.env.NODE_ENV = "development";
+        for (const site of [undefined, "cross-site", "same-site", "none"]) {
+          const response = await fetch(`${base}/backup`, { headers: site ? { "Sec-Fetch-Site": site } : {} });
+          assert.equal(response.status, 403);
+        }
+      } finally {
+        if (previous === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = previous;
+      }
+    });
+    await t.test("download opens standalone with four intact tables and committed WAL data, without changing the live database", async () => {
+      const previous = process.env.NODE_ENV;
+      process.env.NODE_ENV = "development";
+      store.db.exec("PRAGMA journal_mode = WAL;");
+      const writer = new DatabaseSync(databasePath);
+      let temporaryPath: string | undefined;
+      const createBackup = store.createBackup.bind(store);
+      store.createBackup = async () => {
+        const result = await createBackup();
+        temporaryPath = result.path;
+        return result;
+      };
+      try {
+        // A Java-like second connection has an active, uncommitted write.
+        // The download must include the committed value, not that write.
+        writer.exec("BEGIN IMMEDIATE");
+        writer.prepare("UPDATE user_games SET play_count = 999 WHERE user_id = ? AND game_id = ?").run(userId, gameId);
+        const expected = new Map(["genres", "games", "users", "user_games"].map(table => [
+          table, store.db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all(),
+        ]));
+        const response = await fetch(`${base}/backup`, { headers: { "Sec-Fetch-Site": "same-origin" } });
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get("content-type"), "application/vnd.sqlite3");
+        assert.equal(response.headers.get("cache-control"), "no-store");
+        assert.match(response.headers.get("content-disposition") ?? "", /attachment; filename="?game-library-.*\.db"?$/);
+        const bytes = Buffer.from(await response.arrayBuffer());
+        assert.equal(bytes.subarray(0, 16).toString(), "SQLite format 3\0");
+        const downloadedPath = join(directory, "downloaded.db");
+        writeFileSync(downloadedPath, bytes);
+        const downloaded = new DatabaseSync(downloadedPath);
+        try {
+          assert.deepEqual(downloaded.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+            .all().map(row => row.name), ["games", "genres", "user_games", "users"]);
+          assert.equal(downloaded.prepare("PRAGMA integrity_check").get()?.integrity_check, "ok");
+          assert.deepEqual(downloaded.prepare("PRAGMA foreign_key_check").all(), []);
+          for (const [table, rows] of expected) {
+            assert.deepEqual(downloaded.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all(), rows);
+            assert.deepEqual(downloaded.prepare(`PRAGMA foreign_key_list(${table})`).all(),
+              store.db.prepare(`PRAGMA foreign_key_list(${table})`).all());
+          }
+          const links = downloaded.prepare("SELECT rating, play_count FROM user_games WHERE user_id = ? AND game_id = ?");
+          assert.deepEqual({ ...links.get(userId, gameId) }, { rating: null, play_count: 2 });
+          assert.deepEqual({ ...links.get(secondUserId, gameId) }, { rating: 2, play_count: 3 });
+          downloaded.exec("PRAGMA foreign_keys = ON");
+          downloaded.prepare("DELETE FROM users WHERE user_id = ?").run(userId);
+          assert.equal(links.get(userId, gameId), undefined);
+          assert(links.get(secondUserId, gameId));
+          downloaded.prepare("DELETE FROM games WHERE game_id = ?").run(gameId);
+          assert.equal(links.get(secondUserId, gameId), undefined);
+        } finally { downloaded.close(); }
+        writer.exec("ROLLBACK");
+        for (const [table, rows] of expected) {
+          assert.deepEqual(store.db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all(), rows);
+        }
+        // Transfer callback cleanup may finish just after the client consumes it.
+        for (let i = 0; i < 50 && temporaryPath && existsSync(temporaryPath); i++) {
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        assert(temporaryPath);
+        assert.equal(existsSync(temporaryPath), false);
+      } finally {
+        if (writer.isTransaction) writer.exec("ROLLBACK");
+        writer.close();
+        store.createBackup = createBackup;
+        if (previous === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = previous;
+      }
     });
     await t.test("parent deletion cascades only the associated saved relationships", async () => {
       await request("DELETE", `/players/${userId}`, undefined, 204);

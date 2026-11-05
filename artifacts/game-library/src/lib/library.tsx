@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { AlertTriangle, BarChart3, BookMarked, Library, RotateCw, Users } from "lucide-react";
 import { useGetLibrarySummary } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LibraryBackup } from "@/components/library-backup";
 
 export const listQuery = { staleTime: 30_000, refetchOnWindowFocus: true } as const;
 
@@ -69,7 +70,10 @@ export function Shell({ children }: { children: ReactNode }) {
           Every change is written through.
         </div>
       </aside>
-      <main className="flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-6 md:py-10 max-w-[1280px]">{children}</main>
+      <main className="flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-6 md:py-10 max-w-[1280px]">
+        <LibraryBackup />
+        {children}
+      </main>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { DatabaseSync, backup } from "node:sqlite";
 
 export function findLibraryDatabase(start = process.cwd()): string {
   let directory = start;
@@ -17,6 +19,21 @@ export function findLibraryDatabase(start = process.cwd()): string {
 
 export class LibraryStore {
   readonly db: DatabaseSync;
+
+  async createBackup() {
+    // A private, unique temporary directory per download. Never copy the live
+    // file: SQLite's online backup API includes committed WAL data consistently.
+    const directory = await mkdtemp(join(tmpdir(), "game-library-backup-"));
+    const path = join(directory, "library.db");
+    const cleanup = () => rm(directory, { recursive: true, force: true });
+    try {
+      await backup(this.db, path);
+      return { path, cleanup };
+    } catch (error) {
+      await cleanup();
+      throw error;
+    }
+  }
 
   constructor(path: string) {
     if (!existsSync(path)) throw new Error("The existing Game Library database is missing.");

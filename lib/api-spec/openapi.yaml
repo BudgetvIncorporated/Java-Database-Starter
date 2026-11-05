@@ -11,6 +11,42 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /library/backup:
+    get:
+      operationId: downloadLibraryBackup
+      summary: Download a consistent SQLite library backup
+      description: |
+        Includes player emails. Restricted to same-origin browser requests in
+        the private development workspace. Denied outside development until
+        authenticated management access is configured. No backups are retained.
+      responses:
+        "200":
+          description: Standalone SQLite snapshot; the live database is unchanged
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: Attachment with a timestamped .db filename
+            Cache-Control:
+              schema: { type: string }
+              description: no-store
+          content:
+            application/vnd.sqlite3:
+              schema: { type: string, format: binary }
+        "403":
+          description: Management access unavailable or request is not same-origin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryError" }
+        "503":
+          description: Library is busy; retry later
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryError" }
+        "500":
+          description: Backup could not be created or downloaded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryError" }
   /library/summary:
     get:
       operationId: getLibrarySummary
@@ -193,6 +229,11 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    LibraryError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
     LibrarySummary:
       type: object
       required: [games, players, savedGames, totalPlays, genres]

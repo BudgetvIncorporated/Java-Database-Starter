@@ -8,6 +8,15 @@
 import * as zod from 'zod';
 
 
+/**
+ * Includes player emails. Restricted to same-origin browser requests in
+ * the private development workspace. Denied outside development until
+ * authenticated management access is configured. No backups are retained.
+ * @summary Download a consistent SQLite library backup
+ */
+export const DownloadLibraryBackupResponse = zod.unknown()
+
+
 export const GetLibrarySummaryResponse = zod.object({
   "games": zod.number().int(),
   "players": zod.number().int(),
@@ -330,3 +339,5 @@ export const GetLibraryStatisticsResponse = zod.array(GetLibraryStatisticsRespon
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
+
+

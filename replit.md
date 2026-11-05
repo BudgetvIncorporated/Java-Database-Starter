@@ -17,6 +17,8 @@ A school Java/SQLite game-library project with a browser companion and a separat
 - Game links open external sites; this is a library manager, not a playable game host.
 - Browser writes and parent deletions affect the same data the Java app uses. Deleting a game/player cascades their saved-game links; removing a saved link leaves both parents intact.
 - Browser access is currently for the workspace demo, without account-based authorization. Do not treat it as a protected public service or publish it without deciding access control and durable SQLite storage.
+- Backup downloads include player emails. `/api/library/backup` uses SQLite's online backup API, transfers a private temporary file, then deletes it. Nothing is retained server-side or written into the repository.
+- Until authenticated management access exists, backups fail closed outside `NODE_ENV=development` and require same-origin browser Fetch Metadata. This is a workspace-demo boundary, not user authentication; management-policy changes must update the backup guard too.
 
 ## Implementation and checks
 

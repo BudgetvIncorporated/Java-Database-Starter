@@ -5,6 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface LibraryError {
+  error: string;
+}
+
 export interface LibrarySummary {
   games: number;
   players: number;
@@ -100,3 +104,4 @@ export type ListLibraryGamesParams = {
 search?: string;
 genreId?: number;
 };
+

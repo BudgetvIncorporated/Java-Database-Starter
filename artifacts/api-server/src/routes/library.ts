@@ -4,6 +4,7 @@ import {
   UpdateLibrarySavedGameBody, ListLibraryGamesQueryParams,
 } from "@workspace/api-zod";
 import { LibraryStore, gameSelect, playerSelect, savedSelect } from "../lib/library-store";
+import { requireLibraryManagement } from "../lib/library-management";
 
 class HttpError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -55,6 +56,22 @@ export function createLibraryRouter(store: LibraryStore) {
   const router = Router();
   const db = store.db;
   router.use((_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
+  router.get("/backup", requireLibraryManagement, async (req, res, next) => {
+    // Express also maps HEAD to GET; don't generate a sensitive export for it.
+    if (req.method !== "GET") { res.status(405).end(); return; }
+    try {
+      const snapshot = await store.createBackup();
+      if (res.destroyed) { await snapshot.cleanup(); return; }
+      res.setHeader("Content-Type", "application/vnd.sqlite3");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      const filename = `game-library-${new Date().toISOString().replace(/[:.]/g, "-")}.db`;
+      res.download(snapshot.path, filename, async (error) => {
+        try { await snapshot.cleanup(); }
+        catch (cleanupError) { req.log.error({ err: cleanupError }, "Could not remove temporary library backup"); }
+        if (error && !res.destroyed) next(error);
+      });
+    } catch (error) { next(error); }
+  });
   const route = (handler: RequestHandler): RequestHandler => (req, res, next) => {
     try { handler(req, res, next); } catch (error) { next(error); }
   };
@@ -173,6 +190,7 @@ export function createLibraryRouter(store: LibraryStore) {
       GROUP BY u.user_id ORDER BY totalPlayCount DESC, u.username COLLATE NOCASE`).all());
   }));
   const errors: ErrorRequestHandler = (error: unknown, req, res, _next) => {
+    if (res.headersSent) { _next(error); return; }
     if (error instanceof HttpError) { res.status(error.status).json({ error: error.message }); return; }
     const message = error instanceof Error ? error.message : "";
     if (message.includes("UNIQUE constraint failed")) {
