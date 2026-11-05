@@ -278,6 +278,7 @@ final class GameLibraryFrame extends JFrame {
     private void refreshGames() {
         withDatabaseErrors(() -> {
             Integer selectedId = TableSelection.selectedId(gameTable);
+            List<? extends RowSorter.SortKey> sortKeys = TableSelection.sortKeys(gameTable);
             String query = searchField.getText().trim().toLowerCase();
             GenreChoice genre = (GenreChoice) genreFilter.getSelectedItem();
             visibleGames = catalog.findAllGames().stream()
@@ -291,6 +292,7 @@ final class GameLibraryFrame extends JFrame {
                 addRow(gameTable, game.id(), game.title(), game.genreName(),
                         game.releaseDate(), game.url());
             }
+            TableSelection.restoreSort(gameTable.getRowSorter(), sortKeys);
             TableSelection.restoreId(gameTable, selectedId);
             status.setText(visibleGames.size() + " game(s) shown.");
         });
@@ -298,11 +300,13 @@ final class GameLibraryFrame extends JFrame {
 
     private void refreshUsers() throws SQLException {
         Integer selectedId = TableSelection.selectedId(userTable);
+        List<? extends RowSorter.SortKey> sortKeys = TableSelection.sortKeys(userTable);
         visibleUsers = catalog.findAllUsers();
         fill(userTable, new String[]{"ID", "Username", "Email"});
         for (User user : visibleUsers) {
             addRow(userTable, user.id(), user.username(), user.email());
         }
+        TableSelection.restoreSort(userTable.getRowSorter(), sortKeys);
         TableSelection.restoreId(userTable, selectedId);
     }
 
@@ -691,10 +695,7 @@ final class GameLibraryFrame extends JFrame {
 
     static void restoreSavedGameSort(
             TableRowSorter<DefaultTableModel> sorter, List<? extends RowSorter.SortKey> sortKeys) {
-        int columnCount = sorter.getModel().getColumnCount();
-        boolean valid = sortKeys.stream()
-                .allMatch(key -> key.getColumn() >= 0 && key.getColumn() < columnCount);
-        sorter.setSortKeys(valid ? sortKeys : List.of());
+        TableSelection.restoreSort(sorter, sortKeys);
     }
 
     static void restoreSavedGameSelection(

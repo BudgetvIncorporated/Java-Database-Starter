@@ -1,11 +1,29 @@
 package com.example.dbstarter;
 
+import java.util.List;
 import javax.swing.JTable;
+import javax.swing.RowSorter;
 import javax.swing.table.TableModel;
 
 /** Selection by stable integer ID for tables whose first model column contains the ID. */
 final class TableSelection {
     private TableSelection() {
+    }
+
+    static List<? extends RowSorter.SortKey> sortKeys(JTable table) {
+        return table.getRowSorter() == null
+                ? List.of() : List.copyOf(table.getRowSorter().getSortKeys());
+    }
+
+    static void restoreSort(
+            RowSorter<? extends TableModel> sorter, List<? extends RowSorter.SortKey> keys) {
+        if (sorter == null) {
+            return;
+        }
+        int columnCount = sorter.getModel().getColumnCount();
+        boolean valid = keys.stream()
+                .allMatch(key -> key.getColumn() >= 0 && key.getColumn() < columnCount);
+        sorter.setSortKeys(valid ? keys : List.of());
     }
 
     static Integer selectedId(JTable table) {

@@ -2,6 +2,7 @@ package com.example.dbstarter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import javax.swing.JTable;
@@ -13,6 +14,75 @@ import javax.swing.table.TableRowSorter;
 import org.junit.Test;
 
 public class TableSelectionTest {
+    @Test
+    public void catalogSortAndSelectionSurviveFilteredRefreshInBothDirections() {
+        List<Game> original = List.of(game(1, "Zelda"), game(2, "Portal"), game(3, "Portal 2"));
+        List<Game> filtered = List.of(game(3, "Portal 2"), game(2, "Portal"));
+        for (SortOrder direction : List.of(SortOrder.ASCENDING, SortOrder.DESCENDING)) {
+            JTable table = sortedTable(gameModel(original), direction);
+            int selectedView = table.convertRowIndexToView(1);
+            table.setRowSelectionInterval(selectedView, selectedView);
+            Integer selected = TableSelection.selectedId(table);
+            List<? extends RowSorter.SortKey> keys = TableSelection.sortKeys(table);
+
+            table.setModel(gameModel(filtered));
+            TableSelection.restoreSort(table.getRowSorter(), keys);
+            TableSelection.restoreId(table, selected);
+
+            assertEquals(keys, table.getRowSorter().getSortKeys());
+            assertEquals(direction == SortOrder.ASCENDING ? "Portal" : "Portal 2",
+                    table.getValueAt(0, 1));
+            assertEquals(Integer.valueOf(2), TableSelection.selectedId(table));
+
+            table.setModel(gameModel(List.of(game(1, "Zelda"))));
+            TableSelection.restoreSort(table.getRowSorter(), keys);
+            TableSelection.restoreId(table, selected);
+            assertEquals(keys, table.getRowSorter().getSortKeys());
+            assertNull(TableSelection.selectedId(table));
+        }
+    }
+
+    @Test
+    public void userSortAndSelectionSurviveRepeatedRefreshes() {
+        List<User> original = List.of(new User(10, "Zara", "zara@example.com"),
+                new User(20, "Ben", "ben@example.com"));
+        for (SortOrder direction : List.of(SortOrder.ASCENDING, SortOrder.DESCENDING)) {
+            JTable table = sortedTable(userModel(original), direction);
+            int selectedView = table.convertRowIndexToView(0);
+            table.setRowSelectionInterval(selectedView, selectedView);
+            for (int refresh = 0; refresh < 2; refresh++) {
+                Integer selected = TableSelection.selectedId(table);
+                List<? extends RowSorter.SortKey> keys = TableSelection.sortKeys(table);
+                table.setModel(userModel(List.of(original.get(1), original.get(0))));
+                TableSelection.restoreSort(table.getRowSorter(), keys);
+                TableSelection.restoreId(table, selected);
+                assertEquals(keys, table.getRowSorter().getSortKeys());
+                assertEquals(direction == SortOrder.ASCENDING ? "Ben" : "Zara",
+                        table.getValueAt(0, 1));
+                assertEquals(Integer.valueOf(10), TableSelection.selectedId(table));
+            }
+        }
+    }
+
+    @Test
+    public void missingSortColumnFallsBackToNormalOrderAndEmptyStateIsSafe() {
+        JTable table = sortedTable(gameModel(List.of(game(1, "Zelda"), game(2, "Portal"))),
+                SortOrder.ASCENDING);
+        table.getRowSorter().setSortKeys(List.of(
+                new RowSorter.SortKey(4, SortOrder.DESCENDING)));
+        List<? extends RowSorter.SortKey> keys = TableSelection.sortKeys(table);
+        table.setModel(userModel(List.of(new User(10, "Zara", "zara@example.com"),
+                new User(20, "Ben", "ben@example.com"))));
+        TableSelection.restoreSort(table.getRowSorter(), keys);
+        assertTrue(table.getRowSorter().getSortKeys().isEmpty());
+        assertEquals("Zara", table.getValueAt(0, 1));
+        TableSelection.restoreSort(table.getRowSorter(), List.of());
+        assertTrue(table.getRowSorter().getSortKeys().isEmpty());
+        JTable empty = new JTable();
+        assertTrue(TableSelection.sortKeys(empty).isEmpty());
+        TableSelection.restoreSort(empty.getRowSorter(), keys);
+    }
+
     @Test
     public void gameSelectionSurvivesRenamingReorderingAndBothSortDirections() {
         List<Game> original = List.of(game(1, "Zelda"), game(2, "Portal"));
