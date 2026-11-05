@@ -15,6 +15,40 @@ import org.junit.Test;
 
 public class SavedGameFilterTest {
     @Test
+    public void playCountsSortNumericallyAndKeepFilteringAcrossRefresh() {
+        for (SortOrder direction : List.of(SortOrder.ASCENDING, SortOrder.DESCENDING)) {
+            List<RowSorter.SortKey> keys = List.of(new RowSorter.SortKey(3, direction));
+            TableRowSorter<DefaultTableModel> previousSorter = null;
+            for (int refresh = 0; refresh < 2; refresh++) {
+                DefaultTableModel model = GameLibraryFrame.savedGameTableModel();
+                model.addRow(new Object[]{"Ava", "Portal", "Not rated", 10});
+                model.addRow(new Object[]{"Ava", "Portal 2", 5, 0});
+                model.addRow(new Object[]{"Ava", "Portal 3", 4, 2});
+                model.addRow(new Object[]{"Ben", "Tetris", "Not rated", 1});
+                JTable table = new JTable(model);
+                TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+                table.setRowSorter(sorter);
+                sorter.setRowFilter(GameLibraryFrame.savedGameRowFilter("ava", "portal"));
+                GameLibraryFrame.restoreSavedGameSort(sorter, previousSorter == null
+                        ? keys : List.copyOf(previousSorter.getSortKeys()));
+
+                List<Integer> expected = direction == SortOrder.ASCENDING
+                        ? List.of(0, 2, 10) : List.of(10, 2, 0);
+                assertEquals(3, table.getRowCount());
+                for (int row = 0; row < expected.size(); row++) {
+                    assertEquals(expected.get(row), table.getValueAt(row, 3));
+                }
+                assertEquals("Not rated", model.getValueAt(0, 2));
+                assertEquals(5, model.getValueAt(1, 2));
+                sorter.setSortKeys(List.of(new RowSorter.SortKey(2, direction)));
+                assertEquals(3, table.getRowCount());
+                sorter.setSortKeys(keys);
+                previousSorter = sorter;
+            }
+        }
+    }
+
+    @Test
     public void refreshingPreservesSortDirectionAndFilteredSelection() {
         List<SavedGameEntry> original = savedGames();
         List<SavedGameEntry> refreshed = List.of(

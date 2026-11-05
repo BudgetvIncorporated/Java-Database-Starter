@@ -306,7 +306,7 @@ final class GameLibraryFrame extends JFrame {
         List<? extends RowSorter.SortKey> sortKeys = savedGamesSorter == null
                 ? List.of() : List.copyOf(savedGamesSorter.getSortKeys());
         visibleSavedGames = users.findSavedGames();
-        fill(savedGamesTable, new String[]{"User", "Game", "Rating", "Play count"});
+        savedGamesTable.setModel(savedGameTableModel());
         savedGamesSorter = new TableRowSorter<>(
                 (DefaultTableModel) savedGamesTable.getModel());
         savedGamesTable.setRowSorter(savedGamesSorter);
@@ -686,6 +686,20 @@ final class GameLibraryFrame extends JFrame {
         boolean valid = sortKeys.stream()
                 .allMatch(key -> key.getColumn() >= 0 && key.getColumn() < columnCount);
         sorter.setSortKeys(valid ? sortKeys : List.of());
+    }
+
+    static DefaultTableModel savedGameTableModel() {
+        return new DefaultTableModel(new String[]{"User", "Game", "Rating", "Play count"}, 0) {
+            @Override
+            public Class<?> getColumnClass(int column) {
+                return column == 3 ? Integer.class : Object.class;
+            }
+
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
     }
 
     private void addSavedGameFilterListener(JTextField field) {
