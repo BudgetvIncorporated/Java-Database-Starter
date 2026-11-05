@@ -15,6 +15,54 @@ import org.junit.Test;
 
 public class TableSelectionTest {
     @Test
+    public void catalogIdsSortNumericallyAndRetainSelectionAfterRefresh() {
+        assertNumericIdSortAndRefresh(
+                gameModel(List.of(game(10, "Alpha"), game(1, "Zulu"), game(2, "Bravo"))),
+                gameModel(List.of(game(2, "Renamed"), game(10, "Alpha"), game(1, "Zulu"))));
+    }
+
+    @Test
+    public void userIdsSortNumericallyAndRetainSelectionAfterRefresh() {
+        assertNumericIdSortAndRefresh(
+                userModel(List.of(new User(10, "Alpha", "a@example.com"),
+                        new User(1, "Zulu", "z@example.com"),
+                        new User(2, "Bravo", "b@example.com"))),
+                userModel(List.of(new User(2, "Renamed", "new@example.com"),
+                        new User(10, "Alpha", "a@example.com"),
+                        new User(1, "Zulu", "z@example.com"))));
+    }
+
+    private void assertNumericIdSortAndRefresh(
+            DefaultTableModel original, DefaultTableModel refreshed) {
+        assertEquals(Integer.class, original.getColumnClass(0));
+        for (int column = 1; column < original.getColumnCount(); column++) {
+            assertEquals(Object.class, original.getColumnClass(column));
+        }
+        for (SortOrder direction : List.of(SortOrder.ASCENDING, SortOrder.DESCENDING)) {
+            JTable table = sortedTable(original, direction);
+            List<? extends RowSorter.SortKey> keys = List.of(new RowSorter.SortKey(0, direction));
+            table.getRowSorter().setSortKeys(keys);
+            assertIdOrder(table, direction);
+            TableSelection.restoreId(table, 2);
+            for (DefaultTableModel model : List.of(refreshed, original)) {
+                Integer selected = TableSelection.selectedId(table);
+                List<? extends RowSorter.SortKey> captured = TableSelection.sortKeys(table);
+                table.setModel(model);
+                TableSelection.restoreSort(table.getRowSorter(), captured);
+                TableSelection.restoreId(table, selected);
+                assertEquals(keys, table.getRowSorter().getSortKeys());
+                assertIdOrder(table, direction);
+                assertEquals(Integer.valueOf(2), TableSelection.selectedId(table));
+            }
+        }
+    }
+
+    private void assertIdOrder(JTable table, SortOrder direction) {
+        assertEquals(direction == SortOrder.ASCENDING ? List.of(1, 2, 10) : List.of(10, 2, 1),
+                List.of(table.getValueAt(0, 0), table.getValueAt(1, 0), table.getValueAt(2, 0)));
+    }
+
+    @Test
     public void catalogSortAndSelectionSurviveFilteredRefreshInBothDirections() {
         List<Game> original = List.of(game(1, "Zelda"), game(2, "Portal"), game(3, "Portal 2"));
         List<Game> filtered = List.of(game(3, "Portal 2"), game(2, "Portal"));
@@ -173,8 +221,8 @@ public class TableSelectionTest {
     }
 
     private DefaultTableModel gameModel(List<Game> entries) {
-        DefaultTableModel model = new DefaultTableModel(
-                new String[]{"ID", "Title", "Genre", "Published", "Game link"}, 0);
+        DefaultTableModel model = GameLibraryFrame.tableModel(
+                new String[]{"ID", "Title", "Genre", "Published", "Game link"});
         for (Game game : entries) {
             model.addRow(new Object[]{game.id(), game.title(), game.genreName(),
                     game.releaseDate(), game.url()});
@@ -183,7 +231,8 @@ public class TableSelectionTest {
     }
 
     private DefaultTableModel userModel(List<User> entries) {
-        DefaultTableModel model = new DefaultTableModel(new String[]{"ID", "Username", "Email"}, 0);
+        DefaultTableModel model = GameLibraryFrame.tableModel(
+                new String[]{"ID", "Username", "Email"});
         for (User user : entries) {
             model.addRow(new Object[]{user.id(), user.username(), user.email()});
         }

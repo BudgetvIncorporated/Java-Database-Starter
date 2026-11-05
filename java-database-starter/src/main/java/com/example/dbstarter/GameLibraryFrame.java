@@ -846,14 +846,23 @@ final class GameLibraryFrame extends JFrame {
     }
 
     private static void fill(JTable table, String[] columns) {
-        DefaultTableModel model = new DefaultTableModel(columns, 0) {
+        table.setModel(tableModel(columns));
+        table.setAutoCreateRowSorter(true);
+    }
+
+    static DefaultTableModel tableModel(String[] columns) {
+        return new DefaultTableModel(columns, 0) {
+            @Override
+            public Class<?> getColumnClass(int column) {
+                return column == 0 && "ID".equals(getColumnName(column))
+                        ? Integer.class : Object.class;
+            }
+
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        table.setModel(model);
-        table.setAutoCreateRowSorter(true);
     }
 
     private static void addRow(JTable table, Object... values) {
