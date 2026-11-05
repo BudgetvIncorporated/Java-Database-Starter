@@ -19,6 +19,8 @@ window.runSlideLayoutCheck = function runSlideLayoutCheck() {
         if (rect.width > 0 && rect.height > 0) {
           rects.push({
             text: node.textContent.trim().replace(/\s+/g, ' ').slice(0, 80),
+            // Range boxes include font ascenders/descenders beyond tight line-height.
+            overhang: parseFloat(getComputedStyle(node.parentElement).fontSize) * 0.2,
             left: rect.left,
             right: rect.right,
             top: rect.top,
@@ -46,8 +48,8 @@ window.runSlideLayoutCheck = function runSlideLayoutCheck() {
         if (
           text.left < bounds.left - 2 ||
           text.right > bounds.right + 2 ||
-          text.top < bounds.top - 12 ||
-          text.bottom > bounds.bottom + 12
+          text.top < bounds.top - text.overhang ||
+          text.bottom > bounds.bottom + text.overhang
         ) {
           overlapIssues.push(
             `${slideId}: text leaves "${name}" column: "${text.text}" (${text.left.toFixed(1)},${text.top.toFixed(1)}–${text.right.toFixed(1)},${text.bottom.toFixed(1)} vs ${bounds.left.toFixed(1)},${bounds.top.toFixed(1)}–${bounds.right.toFixed(1)},${bounds.bottom.toFixed(1)})`,
@@ -57,6 +59,17 @@ window.runSlideLayoutCheck = function runSlideLayoutCheck() {
     }
 
     const slideText = textRects(slide);
+    const frame = rectOf(slide);
+    for (const text of slideText) {
+      if (
+        text.left < frame.left - 2 ||
+        text.right > frame.right + 2 ||
+        text.top < frame.top - text.overhang ||
+        text.bottom > frame.bottom + text.overhang
+      ) {
+        overlapIssues.push(`${slideId}: text leaves the slide frame: "${text.text}"`);
+      }
+    }
     for (const reserved of reservedAreas) {
       const name = reserved.dataset.layoutReserved || 'reserved graphic';
       const bounds = rectOf(reserved);
@@ -75,5 +88,5 @@ window.runSlideLayoutCheck = function runSlideLayoutCheck() {
     }
   });
 
-  return { slideCount: slideNodes.length, overlapIssues };
+  return { slideCount: slideNodes.length, overlapIssues: [...new Set(overlapIssues)] };
 };

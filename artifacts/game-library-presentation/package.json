@@ -8,6 +8,8 @@
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "validate-slides": "pnpm exec tsx scripts/validate-slides.ts && pnpm exec tsx scripts/check-slide-layout.ts",
+    "check-slide-layout": "pnpm exec tsx scripts/check-slide-layout.ts",
+    "test:slide-layout": "pnpm exec tsx scripts/check-slide-layout.ts --self-test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
-import { chromium } from 'playwright-core';
+import { chromium, type Browser } from 'playwright-core';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(scriptDir, '..');
@@ -38,13 +38,14 @@ async function main(): Promise<void> {
       cwd: projectRoot,
       env: { ...process.env, PORT: String(port), BASE_PATH: '/' },
       stdio: ['ignore', 'pipe', 'pipe'],
+      detached: true,
     },
   );
   let serverOutput = '';
   vite.stdout.on('data', (chunk: Buffer) => { serverOutput += chunk.toString(); });
   vite.stderr.on('data', (chunk: Buffer) => { serverOutput += chunk.toString(); });
 
-  let browser;
+  let browser: Browser | undefined;
   try {
     const url = `http://127.0.0.1:${port}/allslides`;
     let ready = false;
@@ -79,6 +80,7 @@ async function main(): Promise<void> {
       'expectedCount => document.querySelectorAll(".slide").length === expectedCount',
       manifest.length,
     );
+    // Inject plain JS: tsx can add closure helpers that do not exist in the browser.
     await page.addScriptTag({
       path: path.join(scriptDir, 'layout-check-browser.js'),
     });
@@ -104,9 +106,34 @@ async function main(): Promise<void> {
       return;
     }
     console.log(`✓ Slide layout check passed (${issues.slideCount} slides; no text overlaps)`);
+    if (process.argv.includes('--self-test')) {
+      const reflection = manifest.find((slide) => slide.position === 9);
+      if (!reflection) throw new Error('Missing slide 9 regression fixture.');
+      // Mutate only this temporary browser DOM, never the deck source.
+      await page.evaluate(`document.querySelector('[data-layout-content="reflection bullets"]').style.maxWidth = '86vw'`);
+      const collision = await page.evaluate('window.runSlideLayoutCheck()') as typeof issues;
+      if (!collision.overlapIssues.some((issue) =>
+        issue.startsWith(reflection.id) && issue.includes('right-side illustration panel'))) {
+        throw new Error('Regression check failed: slide 9 graphic collision was not detected.');
+      }
+      await page.evaluate(`document.querySelector('[data-layout-content="reflection bullets"]').style.maxWidth = '55vw';
+        document.querySelector('[data-layout-content="reflection bullets"] li').style.whiteSpace = 'nowrap'`);
+      const overflow = await page.evaluate('window.runSlideLayoutCheck()') as typeof issues;
+      if (!overflow.overlapIssues.some((issue) =>
+        issue.startsWith(reflection.id) && issue.includes('leaves "reflection bullets" column'))) {
+        throw new Error('Regression check failed: slide 9 column overflow was not detected.');
+      }
+      console.log('✓ Regression checks passed: slide 9 graphic collision and column overflow detected');
+    }
   } finally {
     await browser?.close();
-    vite.kill('SIGTERM');
+    if (vite.pid !== undefined) {
+      try {
+        process.kill(-vite.pid, 'SIGTERM');
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+      }
+    }
   }
 }
 

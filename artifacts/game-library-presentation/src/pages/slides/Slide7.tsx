@@ -1,7 +1,7 @@
 export default function Slide7() {
   return (
     <div className="w-screen h-screen overflow-hidden relative deck-frame">
-      <div className="absolute bottom-0 left-0 h-[28vh] w-[5vw] rounded-tr-[4vw] bg-[#b9df74]" data-layout-reserved="bottom-left accent panel" />
+      <div className="absolute bottom-0 left-0 h-[28vh] w-[31vw] rounded-tr-[12vw] bg-[#b9df74]" />
       <div className="relative px-[6.5vw] pt-[7vh]">
         <h1 className="deck-title max-w-[80vw]" data-layout-content="title">Project timeline to Friday</h1>
         <div className="mt-[4vh] grid grid-cols-[1fr_1.02fr] gap-x-[3vw]">
