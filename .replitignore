@@ -7,3 +7,7 @@ java-database-starter/library-recovery/
 java-database-starter/*.db*
 java-database-starter/.library-stage-*/
 java-database-starter/*.recovery-lock/
+
+# Never include uploaded database backups in a published image.
+attached_assets/**/*.db*
+attached_assets/**/*.sqlite*

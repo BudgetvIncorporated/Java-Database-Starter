@@ -57,3 +57,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Owner-uploaded database backups contain private player records.
+/attached_assets/**/*.db*
+/attached_assets/**/*.sqlite*
