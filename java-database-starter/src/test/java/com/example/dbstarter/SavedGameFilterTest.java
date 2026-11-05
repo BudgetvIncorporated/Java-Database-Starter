@@ -15,6 +15,66 @@ import org.junit.Test;
 
 public class SavedGameFilterTest {
     @Test
+    public void refreshRestoresTheSameRelationshipDespiteChangedValuesAndOrdering() {
+        List<SavedGameEntry> original = savedGames();
+        JTable oldTable = new JTable(tableModel(original));
+        oldTable.setAutoCreateRowSorter(true);
+        oldTable.getRowSorter().toggleSortOrder(1);
+        int selectedViewRow = oldTable.convertRowIndexToView(2);
+        oldTable.setRowSelectionInterval(selectedViewRow, selectedViewRow);
+        SavedGameEntry captured = GameLibraryFrame.savedGameAtViewRow(
+                oldTable, original, oldTable.getSelectedRow());
+        SavedGameEntry updated = new SavedGameEntry(20, 201, "Ava renamed", "Portal remaster", 5, 99);
+        List<SavedGameEntry> refreshed = List.of(
+                new SavedGameEntry(30, 201, "Ava renamed", "Portal remaster", 5, 99),
+                updated,
+                new SavedGameEntry(20, 300, "Ava renamed", "Portal remaster", 5, 99),
+                original.get(0));
+        for (SortOrder direction : List.of(SortOrder.ASCENDING, SortOrder.DESCENDING)) {
+            JTable table = new JTable(tableModel(refreshed));
+            TableRowSorter<DefaultTableModel> sorter =
+                    new TableRowSorter<>((DefaultTableModel) table.getModel());
+            table.setRowSorter(sorter);
+            sorter.setRowFilter(GameLibraryFrame.savedGameRowFilter("ava", "portal"));
+            sorter.setSortKeys(List.of(new RowSorter.SortKey(1, direction)));
+
+            GameLibraryFrame.restoreSavedGameSelection(table, refreshed, captured);
+
+            assertEquals(updated, GameLibraryFrame.savedGameAtViewRow(
+                    table, refreshed, table.getSelectedRow()));
+            assertEquals(table.convertRowIndexToView(1), table.getSelectedRow());
+        }
+    }
+
+    @Test
+    public void deletedFilteredOrUnselectedRelationshipsLeaveNoSelection() {
+        List<SavedGameEntry> entries = savedGames();
+        JTable table = new JTable(tableModel(entries));
+        TableRowSorter<DefaultTableModel> sorter =
+                new TableRowSorter<>((DefaultTableModel) table.getModel());
+        table.setRowSorter(sorter);
+        table.setRowSelectionInterval(0, 0);
+        GameLibraryFrame.restoreSavedGameSelection(table, entries,
+                new SavedGameEntry(20, 100, "Ava", "Tetris", null, 0));
+        assertEquals(-1, table.getSelectedRow());
+
+        sorter.setRowFilter(GameLibraryFrame.savedGameRowFilter("zara", ""));
+        table.setRowSelectionInterval(0, 0);
+        GameLibraryFrame.restoreSavedGameSelection(table, entries, entries.get(2));
+        assertEquals(-1, table.getSelectedRow());
+        assertNull(GameLibraryFrame.savedGameAtViewRow(table, entries, table.getSelectedRow()));
+
+        sorter.setRowFilter(null);
+        table.setRowSelectionInterval(0, 0);
+        GameLibraryFrame.restoreSavedGameSelection(table, entries, null);
+        assertEquals(-1, table.getSelectedRow());
+
+        JTable empty = new JTable(tableModel(List.of()));
+        GameLibraryFrame.restoreSavedGameSelection(empty, List.of(), entries.get(0));
+        assertEquals(-1, empty.getSelectedRow());
+    }
+
+    @Test
     public void playCountsSortNumericallyAndKeepFilteringAcrossRefresh() {
         for (SortOrder direction : List.of(SortOrder.ASCENDING, SortOrder.DESCENDING)) {
             List<RowSorter.SortKey> keys = List.of(new RowSorter.SortKey(3, direction));

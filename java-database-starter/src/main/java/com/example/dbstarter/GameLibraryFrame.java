@@ -303,6 +303,8 @@ final class GameLibraryFrame extends JFrame {
     }
 
     private void refreshReports() throws SQLException {
+        SavedGameEntry selected = savedGameAtViewRow(
+                savedGamesTable, visibleSavedGames, savedGamesTable.getSelectedRow());
         List<? extends RowSorter.SortKey> sortKeys = savedGamesSorter == null
                 ? List.of() : List.copyOf(savedGamesSorter.getSortKeys());
         visibleSavedGames = users.findSavedGames();
@@ -316,6 +318,7 @@ final class GameLibraryFrame extends JFrame {
         }
         applySavedGameFilters();
         restoreSavedGameSort(savedGamesSorter, sortKeys);
+        restoreSavedGameSelection(savedGamesTable, visibleSavedGames, selected);
 
         visibleStats = catalog.summarizeLibraryByUser();
         fill(statsTable, new String[]{"Username", "Games saved", "Total plays", "Average rating"});
@@ -686,6 +689,25 @@ final class GameLibraryFrame extends JFrame {
         boolean valid = sortKeys.stream()
                 .allMatch(key -> key.getColumn() >= 0 && key.getColumn() < columnCount);
         sorter.setSortKeys(valid ? sortKeys : List.of());
+    }
+
+    static void restoreSavedGameSelection(
+            JTable table, List<SavedGameEntry> entries, SavedGameEntry selected) {
+        table.clearSelection();
+        if (selected == null) {
+            return;
+        }
+        for (int modelRow = 0; modelRow < entries.size(); modelRow++) {
+            SavedGameEntry entry = entries.get(modelRow);
+            if (entry.userId() == selected.userId() && entry.gameId() == selected.gameId()) {
+                int viewRow = table.convertRowIndexToView(modelRow);
+                if (viewRow >= 0) {
+                    table.setRowSelectionInterval(viewRow, viewRow);
+                    table.scrollRectToVisible(table.getCellRect(viewRow, 0, true));
+                }
+                return;
+            }
+        }
     }
 
     static DefaultTableModel savedGameTableModel() {
