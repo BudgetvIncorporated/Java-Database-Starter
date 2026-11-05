@@ -543,15 +543,21 @@ final class GameLibraryFrame extends JFrame {
     }
 
     private void sortGames() {
-        Integer selectedId = TableSelection.selectedId(gameTable);
-        visibleGames = GameAlgorithms.sortByTitle(visibleGames);
-        fill(gameTable, new String[]{"ID", "Title", "Genre", "Published", "Game link"});
-        for (Game game : visibleGames) {
-            addRow(gameTable, game.id(), game.title(), game.genreName(),
+        visibleGames = sortGames(gameTable, visibleGames);
+        status.setText("Games sorted by title using Java insertion sort.");
+    }
+
+    /** Shared by the button action and headless Swing regression tests. */
+    static List<Game> sortGames(JTable table, List<Game> games) {
+        Integer selectedId = TableSelection.selectedId(table);
+        List<Game> sorted = GameAlgorithms.sortByTitle(games);
+        fill(table, new String[]{"ID", "Title", "Genre", "Published", "Game link"});
+        for (Game game : sorted) {
+            addRow(table, game.id(), game.title(), game.genreName(),
                     game.releaseDate(), game.url());
         }
-        TableSelection.restoreId(gameTable, selectedId);
-        status.setText("Games sorted by title using Java insertion sort.");
+        TableSelection.restoreId(table, selectedId);
+        return sorted;
     }
 
     private void openGame() {

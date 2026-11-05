@@ -9,11 +9,54 @@ import javax.swing.JTable;
 import javax.swing.RowFilter;
 import javax.swing.RowSorter;
 import javax.swing.SortOrder;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import org.junit.Test;
 
 public class TableSelectionTest {
+    @Test
+    public void javaTitleSortOverridesHeaderSortAndRetainsDuplicateTitleSelection() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            List<Game> original = List.of(game(1, "Zelda"), game(10, "Portal"),
+                    game(6, "portal"), game(8, "Alpha"), game(2, "Portal"));
+            // Literal order verifies insertion sort's case tie-break and stable duplicate order.
+            List<Game> expected = List.of(original.get(3), original.get(1), original.get(4),
+                    original.get(2), original.get(0));
+            for (int column : List.of(0, 1)) {
+                for (SortOrder direction : List.of(SortOrder.ASCENDING, SortOrder.DESCENDING)) {
+                    // Exercise each duplicate separately: matching by title would select the wrong ID.
+                    for (int selectedId : List.of(10, 2)) {
+                        JTable table = new JTable(gameModel(original));
+                        table.setAutoCreateRowSorter(true);
+                        List<RowSorter.SortKey> keys = List.of(
+                                new RowSorter.SortKey(column, direction));
+                        table.getRowSorter().setSortKeys(keys);
+                        int selectedModelRow = selectedId == 10 ? 1 : 4;
+                        int selectedViewRow = table.convertRowIndexToView(selectedModelRow);
+                        table.setRowSelectionInterval(selectedViewRow, selectedViewRow);
+                        assertEquals(keys, TableSelection.sortKeys(table));
+                        assertEquals(Integer.valueOf(selectedId), TableSelection.selectedId(table));
+
+                        List<Game> sorted = GameLibraryFrame.sortGames(table, original);
+
+                        assertTrue("Java sort must clear header sort keys",
+                                TableSelection.sortKeys(table).isEmpty());
+                        assertEquals(expected, sorted);
+                        for (int row = 0; row < expected.size(); row++) {
+                            assertEquals(expected.get(row).id(), table.getValueAt(row, 0));
+                            assertEquals(expected.get(row).title(), table.getValueAt(row, 1));
+                            assertEquals("View and returned list must stay aligned",
+                                    row, table.convertRowIndexToModel(row));
+                        }
+                        assertEquals(Integer.valueOf(selectedId), TableSelection.selectedId(table));
+                        assertEquals(selectedId == 10 ? 1 : 2, table.getSelectedRow());
+                    }
+                }
+            }
+        });
+    }
+
     @Test
     public void catalogIdsSortNumericallyAndRetainSelectionAfterRefresh() {
         assertNumericIdSortAndRefresh(
