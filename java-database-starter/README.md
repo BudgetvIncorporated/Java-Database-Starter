@@ -61,10 +61,19 @@ mvn compile exec:java
 
 If running manually in a graphical terminal, use the same commands. Maven
 downloads the JDBC driver and test dependency on the first build. The app
-creates/updates `game-library.db` in the current working directory, then
-applies the schema and inserts any missing sample rows. The local database
+creates `game-library.db` in the current working directory if missing, then
+initializes the schema and sample rows only when there are no application tables.
+Existing libraries are never reseeded on restart. The local database
 contains user-entered changes and should not be deleted if you want to keep
 them.
+
+## Recovering a browser backup
+
+See [Administrator-only recovery](RECOVERY.md) before replacing any database.
+Downloading a backup does not restore it. Recovery is an explicit offline
+administrator command, never a player-facing upload or endpoint. Stop both the
+Java and browser API writers, validate the backup, preserve the current library,
+and follow the documented rollback and restart steps.
 
 To build without opening the app:
 

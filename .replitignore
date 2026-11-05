@@ -3,3 +3,6 @@
 
 # No need to store the pnpm store twice.
 .local
+java-database-starter/library-recovery/
+java-database-starter/.library-stage-*/
+java-database-starter/*.recovery-lock/

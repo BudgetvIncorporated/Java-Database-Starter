@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { DatabaseSync, backup } from "node:sqlite";
@@ -8,6 +8,23 @@ import express from "express";
 import { createLibraryRouter } from "../routes/library";
 import { findLibraryDatabase, LibraryStore } from "../lib/library-store";
 import { isManagerEmail } from "../lib/library-management";
+
+test("the API cannot open a library gated for offline administrator recovery", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "library-recovery-gate-"));
+  const databasePath = join(directory, "library.db");
+  const source = new DatabaseSync(findLibraryDatabase(), { readOnly: true });
+  try {
+    await backup(source, databasePath);
+    mkdirSync(`${databasePath}.recovery-lock`);
+    assert.throws(() => new LibraryStore(databasePath), /administrator recovery/);
+    rmSync(`${databasePath}.recovery-lock`, { recursive: true });
+    const resumed = new LibraryStore(databasePath);
+    resumed.db.close();
+  } finally {
+    source.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test("only an explicitly configured, verified Clerk email qualifies as manager", () => {
   const verified = { emailAddress: "owner@example.com", verification: { status: "verified" } };

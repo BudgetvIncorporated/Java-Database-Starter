@@ -21,6 +21,9 @@ A school Java/SQLite game-library project with a browser companion and a separat
 - Development and production use separate Clerk identities; the owner must verify their configured email in each environment. Durable SQLite storage still needs a decision before public deployment.
 - Backup downloads include player emails. `/api/library/backup` uses SQLite's online backup API, transfers a private temporary file, then deletes it. Nothing is retained server-side or written into the repository.
 - Management operations and backups require same-origin browser Fetch Metadata as well as manager authorization. Clerk cookies authenticate same-origin web requests; do not add browser bearer tokens.
+- Recovery is a separate, offline administrator operation, not a browser upload or API endpoint. Follow `java-database-starter/RECOVERY.md`; the Node 24 CLI validates backups, requires explicit replacement confirmation and stopped writers, preserves the current DB plus sidecars, and leaves a maintenance gate until explicit validated resume.
+- Both Java and API startup refuse to open a database with its `.recovery-lock` gate. Keep all older app copies and external SQLite tools stopped during recovery. Private `library-recovery/` archives and `.library-stage-*` files must never be committed or published.
+- Java seeds only a fresh empty schema; restarting it must never reinsert sample data into an existing/restored library.
 
 ## Implementation and checks
 
@@ -30,4 +33,5 @@ A school Java/SQLite game-library project with a browser companion and a separat
 - Generated hooks: `@workspace/api-client-react`; validation: `@workspace/api-zod`.
 - `pnpm --filter @workspace/api-server test` exercises CRUD, validation, cascades, and persisted writes against a temporary backup of the real SQLite database, never against the original.
 - `pnpm run typecheck` checks workspace types.
-- `cd java-database-starter && mvn test` checks the unchanged Java app.
+- `cd java-database-starter && mvn test` checks the Java app and recovery startup protection.
+- `node --test java-database-starter/recovery/library-recovery.test.mjs` checks offline validation, recovery refusal, preservation, and explicit resume on disposable databases.

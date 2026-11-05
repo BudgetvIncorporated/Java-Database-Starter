@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -37,7 +37,16 @@ export class LibraryStore {
 
   constructor(path: string) {
     if (!existsSync(path)) throw new Error("The existing Game Library database is missing.");
+    path = realpathSync(path);
+    const maintenance = `${path}.recovery-lock`;
+    if (existsSync(maintenance)) throw new Error("The library is offline for administrator recovery.");
     this.db = new DatabaseSync(path);
+    // Recheck after opening so an administrator can gate service starts before
+    // checking that all previous SQLite handles have closed.
+    if (existsSync(maintenance)) {
+      this.db.close();
+      throw new Error("The library is offline for administrator recovery.");
+    }
     this.db.exec("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
     // Fail at startup for the wrong database instead of serving an empty replacement.
     this.db.prepare("SELECT game_id, genre_id, title, launch_url, release_date FROM games LIMIT 0").all();

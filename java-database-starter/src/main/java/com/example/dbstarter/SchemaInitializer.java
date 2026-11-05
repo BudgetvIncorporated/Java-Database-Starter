@@ -13,6 +13,15 @@ public final class SchemaInitializer {
     }
 
     public static void apply(Connection connection) throws IOException, SQLException {
+        // Existing libraries (especially restored backups) must not be reseeded
+        // or have their schema silently changed on a desktop restart.
+        try (Statement statement = connection.createStatement();
+             var tables = statement.executeQuery(
+                     "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")) {
+            if (tables.next() && tables.getInt(1) > 0) {
+                return;
+            }
+        }
         applyResource(connection, "/schema.sql");
         applyResource(connection, "/seed.sql");
     }
