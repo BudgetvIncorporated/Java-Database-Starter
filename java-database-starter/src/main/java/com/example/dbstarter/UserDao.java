@@ -94,7 +94,19 @@ public final class UserDao implements CrudDao<User> {
             }
             statement.setInt(4, userGame.playCount());
             statement.executeUpdate();
+        } catch (SQLException exception) {
+            if (isDuplicateSavedGame(exception)) {
+                throw new DuplicateSavedGameException(exception);
+            }
+            throw exception;
         }
+    }
+
+    private boolean isDuplicateSavedGame(SQLException exception) {
+        String message = exception.getMessage();
+        return message != null
+                && message.contains("user_games.user_id")
+                && message.contains("user_games.game_id");
     }
 
     public List<SavedGameEntry> findSavedGames() throws SQLException {

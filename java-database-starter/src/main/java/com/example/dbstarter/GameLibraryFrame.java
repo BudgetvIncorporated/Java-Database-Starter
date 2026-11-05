@@ -386,7 +386,14 @@ final class GameLibraryFrame extends JFrame {
             UserGameInput input = userGameInput(ratingField, playsField);
             User user = ((UserChoice) userChoice.getSelectedItem()).user();
             Game game = ((GameChoice) gameChoice.getSelectedItem()).game();
-            users.addGameToLibrary(new UserGame(user.id(), game.id(), input.rating(), input.playCount()));
+            try {
+                users.addGameToLibrary(
+                        new UserGame(user.id(), game.id(), input.rating(), input.playCount()));
+            } catch (DuplicateSavedGameException exception) {
+                showMessage("\"" + game.title() + "\" is already saved in "
+                        + user.username() + "'s library.", "Game already saved");
+                return;
+            }
             refreshReports();
             status.setText(game.title() + " added to " + user.username() + "'s library.");
         });

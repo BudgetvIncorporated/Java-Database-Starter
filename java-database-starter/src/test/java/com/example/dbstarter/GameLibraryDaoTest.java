@@ -156,15 +156,20 @@ public class GameLibraryDaoTest {
                 "2025-01-04", "Puzzle"));
         UserGame saved = new UserGame(userId, gameId, null, 0);
         users.addGameToLibrary(saved);
-        assertThrows(SQLException.class, () -> users.addGameToLibrary(saved));
+        DuplicateSavedGameException exception = assertThrows(
+                DuplicateSavedGameException.class, () -> users.addGameToLibrary(saved));
+        assertTrue(exception.getMessage().contains("already saved"));
+        assertTrue(exception.getCause() instanceof SQLException);
     }
 
     @Test
     public void databaseRejectsDuplicateUsersAndMissingReferences() throws Exception {
-        assertThrows(SQLException.class,
+        SQLException duplicateUsername = assertThrows(SQLException.class,
                 () -> users.create(new User(0, "player01", "another@example.com")));
-        assertThrows(SQLException.class,
+        assertFalse(duplicateUsername instanceof DuplicateSavedGameException);
+        SQLException duplicateEmail = assertThrows(SQLException.class,
                 () -> users.create(new User(0, "another_player", "player01@example.com")));
+        assertFalse(duplicateEmail instanceof DuplicateSavedGameException);
         assertThrows(SQLException.class,
                 () -> users.addGameToLibrary(new UserGame(999, 1, null, 0)));
         assertThrows(SQLException.class,
