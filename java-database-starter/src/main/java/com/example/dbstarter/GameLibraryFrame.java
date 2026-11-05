@@ -277,6 +277,7 @@ final class GameLibraryFrame extends JFrame {
 
     private void refreshGames() {
         withDatabaseErrors(() -> {
+            Integer selectedId = TableSelection.selectedId(gameTable);
             String query = searchField.getText().trim().toLowerCase();
             GenreChoice genre = (GenreChoice) genreFilter.getSelectedItem();
             visibleGames = catalog.findAllGames().stream()
@@ -290,16 +291,19 @@ final class GameLibraryFrame extends JFrame {
                 addRow(gameTable, game.id(), game.title(), game.genreName(),
                         game.releaseDate(), game.url());
             }
+            TableSelection.restoreId(gameTable, selectedId);
             status.setText(visibleGames.size() + " game(s) shown.");
         });
     }
 
     private void refreshUsers() throws SQLException {
+        Integer selectedId = TableSelection.selectedId(userTable);
         visibleUsers = catalog.findAllUsers();
         fill(userTable, new String[]{"ID", "Username", "Email"});
         for (User user : visibleUsers) {
             addRow(userTable, user.id(), user.username(), user.email());
         }
+        TableSelection.restoreId(userTable, selectedId);
     }
 
     private void refreshReports() throws SQLException {
@@ -535,12 +539,14 @@ final class GameLibraryFrame extends JFrame {
     }
 
     private void sortGames() {
+        Integer selectedId = TableSelection.selectedId(gameTable);
         visibleGames = GameAlgorithms.sortByTitle(visibleGames);
         fill(gameTable, new String[]{"ID", "Title", "Genre", "Published", "Game link"});
         for (Game game : visibleGames) {
             addRow(gameTable, game.id(), game.title(), game.genreName(),
                     game.releaseDate(), game.url());
         }
+        TableSelection.restoreId(gameTable, selectedId);
         status.setText("Games sorted by title using Java insertion sort.");
     }
 
