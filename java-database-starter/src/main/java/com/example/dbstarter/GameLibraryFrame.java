@@ -14,6 +14,7 @@ import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -22,11 +23,15 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.RowFilter;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 final class GameLibraryFrame extends JFrame {
     private static final Color INK = new Color(28, 38, 53);
@@ -42,8 +47,12 @@ final class GameLibraryFrame extends JFrame {
     private final JTable savedGamesTable = table();
     private final JTable statsTable = table();
     private final JTextField searchField = new JTextField(22);
+    private final JTextField savedGamePlayerFilter = new JTextField(12);
+    private final JTextField savedGameTitleFilter = new JTextField(12);
     private final JComboBox<GenreChoice> genreFilter = new JComboBox<>();
+    private final JLabel savedGameFilterCount = new JLabel("All saved games");
     private final JLabel status = new JLabel("Connected to your local SQLite game library.");
+    private TableRowSorter<DefaultTableModel> savedGamesSorter;
     private List<Game> visibleGames = List.of();
     private List<User> visibleUsers = List.of();
     private List<SavedGameEntry> visibleSavedGames = List.of();
@@ -195,7 +204,31 @@ final class GameLibraryFrame extends JFrame {
         top.add(editSavedGame);
         top.add(removeSavedGame);
         top.add(refresh);
-        panel.add(top, BorderLayout.NORTH);
+
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        filters.setOpaque(false);
+        savedGamePlayerFilter.setToolTipText("Filter saved games by player name");
+        savedGameTitleFilter.setToolTipText("Filter saved games by game title");
+        filters.add(label("Player"));
+        filters.add(savedGamePlayerFilter);
+        filters.add(label("Game title"));
+        filters.add(savedGameTitleFilter);
+        JButton clearFilters = button("Clear filters", false);
+        clearFilters.addActionListener(event -> {
+            savedGamePlayerFilter.setText("");
+            savedGameTitleFilter.setText("");
+            applySavedGameFilters();
+        });
+        filters.add(clearFilters);
+        filters.add(savedGameFilterCount);
+        addSavedGameFilterListener(savedGamePlayerFilter);
+        addSavedGameFilterListener(savedGameTitleFilter);
+
+        JPanel controls = new JPanel(new BorderLayout());
+        controls.setOpaque(false);
+        controls.add(top, BorderLayout.NORTH);
+        controls.add(filters, BorderLayout.SOUTH);
+        panel.add(controls, BorderLayout.NORTH);
 
         JTabbedPane reportTabs = new JTabbedPane();
         reportTabs.addTab("Saved games (JOIN)", new JScrollPane(savedGamesTable));
@@ -262,10 +295,14 @@ final class GameLibraryFrame extends JFrame {
     private void refreshReports() throws SQLException {
         visibleSavedGames = users.findSavedGames();
         fill(savedGamesTable, new String[]{"User", "Game", "Rating", "Play count"});
+        savedGamesSorter = new TableRowSorter<>(
+                (DefaultTableModel) savedGamesTable.getModel());
+        savedGamesTable.setRowSorter(savedGamesSorter);
         for (SavedGameEntry entry : visibleSavedGames) {
             addRow(savedGamesTable, entry.username(), entry.gameTitle(),
                     entry.rating() == null ? "Not rated" : entry.rating(), entry.playCount());
         }
+        applySavedGameFilters();
 
         visibleStats = catalog.summarizeLibraryByUser();
         fill(statsTable, new String[]{"Username", "Games saved", "Total plays", "Average rating"});
@@ -599,11 +636,64 @@ final class GameLibraryFrame extends JFrame {
 
     private SavedGameEntry selectedSavedGame() {
         int row = savedGamesTable.getSelectedRow();
-        if (row < 0 || row >= visibleSavedGames.size()) {
+        SavedGameEntry selected = savedGameAtViewRow(savedGamesTable, visibleSavedGames, row);
+        if (selected == null) {
             showMessage("Select a saved game in the table first.", "No saved game selected");
             return null;
         }
-        return visibleSavedGames.get(savedGamesTable.convertRowIndexToModel(row));
+        return selected;
+    }
+
+    static RowFilter<DefaultTableModel, Integer> savedGameRowFilter(
+            String playerQuery, String titleQuery) {
+        String playerNeedle = playerQuery.trim().toLowerCase(Locale.ROOT);
+        String titleNeedle = titleQuery.trim().toLowerCase(Locale.ROOT);
+        return new RowFilter<>() {
+            @Override
+            public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                String player = entry.getStringValue(0).toLowerCase(Locale.ROOT);
+                String title = entry.getStringValue(1).toLowerCase(Locale.ROOT);
+                return player.contains(playerNeedle) && title.contains(titleNeedle);
+            }
+        };
+    }
+
+    static SavedGameEntry savedGameAtViewRow(
+            JTable table, List<SavedGameEntry> savedGames, int viewRow) {
+        if (viewRow < 0 || viewRow >= table.getRowCount()) {
+            return null;
+        }
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        return modelRow < savedGames.size() ? savedGames.get(modelRow) : null;
+    }
+
+    private void addSavedGameFilterListener(JTextField field) {
+        field.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent event) {
+                applySavedGameFilters();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent event) {
+                applySavedGameFilters();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent event) {
+                applySavedGameFilters();
+            }
+        });
+    }
+
+    private void applySavedGameFilters() {
+        if (savedGamesSorter == null) {
+            return;
+        }
+        savedGamesSorter.setRowFilter(savedGameRowFilter(
+                savedGamePlayerFilter.getText(), savedGameTitleFilter.getText()));
+        savedGameFilterCount.setText(savedGamesTable.getRowCount() + " of "
+                + visibleSavedGames.size() + " saved games");
     }
 
     private Integer selectedGenreId() {
