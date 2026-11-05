@@ -14,6 +14,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { useToast } from "@/hooks/use-toast";
+import { savedGameFailureCategory, trackSavedGame } from "@/lib/analytics";
 import {
   EmptyBlock, ErrorBlock, Field, FormError, PageHeader, Rating, RowsSkeleton, SummaryStrip,
   btnGhost, btnIcon, btnPrimary, errorMessage, inputCls, listQuery, useInvalidateLibrary,
@@ -37,14 +38,27 @@ function SavedDialog({ open, onOpenChange, saved, players, games }: { open: bool
     }
   }, [open, saved]);
   const done = async (m: string) => { await invalidate(); toast({ title: m }); onOpenChange(false); };
-  const create = useCreateLibrarySavedGame({ mutation: { onSuccess: (s) => done(`Saved ${s.gameTitle} for ${s.username}`), onError: (e) => setErr(errorMessage(e)) } });
-  const update = useUpdateLibrarySavedGame({ mutation: { onSuccess: (s) => done(`Updated ${s.gameTitle} for ${s.username}`), onError: (e) => setErr(errorMessage(e)) } });
+  const create = useCreateLibrarySavedGame({ mutation: {
+    onSuccess: (s) => { trackSavedGame({ operation: "create", outcome: "success" }); return done(`Saved ${s.gameTitle} for ${s.username}`); },
+    onError: (e) => { trackSavedGame({ operation: "create", outcome: "failure", status: savedGameFailureCategory(e) }); setErr(errorMessage(e)); },
+  } });
+  const update = useUpdateLibrarySavedGame({ mutation: {
+    onSuccess: (s) => { trackSavedGame({ operation: "edit", outcome: "success" }); return done(`Updated ${s.gameTitle} for ${s.username}`); },
+    onError: (e) => { trackSavedGame({ operation: "edit", outcome: "failure", status: savedGameFailureCategory(e) }); setErr(errorMessage(e)); },
+  } });
   const pending = create.isPending || update.isPending;
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (pending) return;
+    const operation = saved ? "edit" : "create";
+    trackSavedGame({ operation, outcome: "attempt" });
+    const invalid = (message: string) => {
+      trackSavedGame({ operation, outcome: "failure", status: "validation" });
+      setErr(message);
+    };
     setErr(null);
-    if (!saved && (!userId || !gameId)) return setErr("Choose both a player and a game.");
-    if (!/^\d+$/.test(playCount.trim()) || Number(playCount) > 2147483647) return setErr("Play count must be a whole number of 0 or more.");
+    if (!saved && (!userId || !gameId)) return invalid("Choose both a player and a game.");
+    if (!/^\d+$/.test(playCount.trim()) || Number(playCount) > 2147483647) return invalid("Play count must be a whole number of 0 or more.");
     const data = { rating: rating ? Number(rating) : null, playCount: Number(playCount) };
     if (saved) update.mutate({ userId: saved.userId, gameId: saved.gameId, data });
     else create.mutate({ data: { ...data, userId: Number(userId), gameId: Number(gameId) } });
@@ -110,8 +124,8 @@ export default function SavedPage() {
   const [delErr, setDelErr] = useState<string | null>(null);
   const del = useDeleteLibrarySavedGame({
     mutation: {
-      onSuccess: async () => { await invalidate(); toast({ title: "Saved link removed" }); setToDelete(null); },
-      onError: (e) => setDelErr(errorMessage(e)),
+      onSuccess: async () => { trackSavedGame({ operation: "remove", outcome: "success" }); await invalidate(); toast({ title: "Saved link removed" }); setToDelete(null); },
+      onError: (e) => { trackSavedGame({ operation: "remove", outcome: "failure", status: savedGameFailureCategory(e) }); setDelErr(errorMessage(e)); },
     },
   });
 
@@ -187,7 +201,11 @@ export default function SavedPage() {
         confirmLabel="Remove link"
         pending={del.isPending}
         error={delErr}
-        onConfirm={() => toDelete && del.mutate({ userId: toDelete.userId, gameId: toDelete.gameId })}
+        onConfirm={() => {
+          if (!toDelete || del.isPending) return;
+          trackSavedGame({ operation: "remove", outcome: "attempt" });
+          del.mutate({ userId: toDelete.userId, gameId: toDelete.gameId });
+        }}
       />
     </div>
   );
