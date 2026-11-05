@@ -2,3 +2,4 @@
 - [Browser evaluation isolation](browser-evaluation.md) — tsx-transformed closures can reference helpers absent in the browser; keep browser-side checks self-contained.
 - [Library access policy](library-access-policy.md) — Public catalog/statistics, owner-only management; player records never establish identity.
 - [SQLite backup safety](sqlite-backup-safety.md) — Read-only connections can create WAL sidecars; immutable mode is only safe for standalone snapshots.
+- [Presentation requirements](presentation-requirements.md) — The project slideshow must retain a Gantt chart, including exported versions.
