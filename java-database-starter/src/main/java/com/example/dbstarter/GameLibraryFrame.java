@@ -24,6 +24,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.RowFilter;
+import javax.swing.RowSorter;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -302,6 +303,8 @@ final class GameLibraryFrame extends JFrame {
     }
 
     private void refreshReports() throws SQLException {
+        List<? extends RowSorter.SortKey> sortKeys = savedGamesSorter == null
+                ? List.of() : List.copyOf(savedGamesSorter.getSortKeys());
         visibleSavedGames = users.findSavedGames();
         fill(savedGamesTable, new String[]{"User", "Game", "Rating", "Play count"});
         savedGamesSorter = new TableRowSorter<>(
@@ -312,6 +315,7 @@ final class GameLibraryFrame extends JFrame {
                     entry.rating() == null ? "Not rated" : entry.rating(), entry.playCount());
         }
         applySavedGameFilters();
+        restoreSavedGameSort(savedGamesSorter, sortKeys);
 
         visibleStats = catalog.summarizeLibraryByUser();
         fill(statsTable, new String[]{"Username", "Games saved", "Total plays", "Average rating"});
@@ -674,6 +678,14 @@ final class GameLibraryFrame extends JFrame {
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
         return modelRow < savedGames.size() ? savedGames.get(modelRow) : null;
+    }
+
+    static void restoreSavedGameSort(
+            TableRowSorter<DefaultTableModel> sorter, List<? extends RowSorter.SortKey> sortKeys) {
+        int columnCount = sorter.getModel().getColumnCount();
+        boolean valid = sortKeys.stream()
+                .allMatch(key -> key.getColumn() >= 0 && key.getColumn() < columnCount);
+        sorter.setSortKeys(valid ? sortKeys : List.of());
     }
 
     private void addSavedGameFilterListener(JTextField field) {

@@ -7,11 +7,71 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import javax.swing.JTable;
+import javax.swing.RowSorter;
+import javax.swing.SortOrder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import org.junit.Test;
 
 public class SavedGameFilterTest {
+    @Test
+    public void refreshingPreservesSortDirectionAndFilteredSelection() {
+        List<SavedGameEntry> original = savedGames();
+        List<SavedGameEntry> refreshed = List.of(
+                original.get(3), original.get(2), original.get(0), original.get(1));
+        for (SortOrder direction : List.of(SortOrder.ASCENDING, SortOrder.DESCENDING)) {
+            TableRowSorter<DefaultTableModel> oldSorter = new TableRowSorter<>(tableModel(original));
+            oldSorter.setSortKeys(List.of(new RowSorter.SortKey(1, direction)));
+            List<? extends RowSorter.SortKey> capturedKeys = List.copyOf(oldSorter.getSortKeys());
+
+            JTable table = new JTable(tableModel(refreshed));
+            TableRowSorter<DefaultTableModel> newSorter =
+                    new TableRowSorter<>((DefaultTableModel) table.getModel());
+            table.setRowSorter(newSorter);
+            newSorter.setRowFilter(GameLibraryFrame.savedGameRowFilter("ava", "portal"));
+            GameLibraryFrame.restoreSavedGameSort(newSorter, capturedKeys);
+
+            assertEquals(capturedKeys, newSorter.getSortKeys());
+            assertEquals(2, table.getRowCount());
+            SavedGameEntry expected = direction == SortOrder.ASCENDING
+                    ? original.get(2) : original.get(1);
+            assertEquals(expected, GameLibraryFrame.savedGameAtViewRow(table, refreshed, 0));
+
+            newSorter.setRowFilter(GameLibraryFrame.savedGameRowFilter("", ""));
+            assertEquals(4, table.getRowCount());
+            assertEquals(capturedKeys, newSorter.getSortKeys());
+        }
+    }
+
+    @Test
+    public void missingSortColumnFallsBackToNormalOrdering() {
+        List<SavedGameEntry> entries = savedGames();
+        JTable table = new JTable(tableModel(entries));
+        TableRowSorter<DefaultTableModel> sorter =
+                new TableRowSorter<>((DefaultTableModel) table.getModel());
+        table.setRowSorter(sorter);
+        sorter.setSortKeys(List.of(new RowSorter.SortKey(1, SortOrder.ASCENDING)));
+
+        GameLibraryFrame.restoreSavedGameSort(sorter, List.of(
+                new RowSorter.SortKey(1, SortOrder.ASCENDING),
+                new RowSorter.SortKey(3, SortOrder.DESCENDING)));
+
+        assertTrue(sorter.getSortKeys().isEmpty());
+        assertEquals(entries.get(0), GameLibraryFrame.savedGameAtViewRow(table, entries, 0));
+    }
+
+    @Test
+    public void refreshingAnEmptyTableKeepsValidSortKeysAndAcceptsUnsortedState() {
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel(List.of()));
+        List<RowSorter.SortKey> keys = List.of(
+                new RowSorter.SortKey(0, SortOrder.ASCENDING),
+                new RowSorter.SortKey(1, SortOrder.DESCENDING));
+        GameLibraryFrame.restoreSavedGameSort(sorter, keys);
+        assertEquals(keys, sorter.getSortKeys());
+        GameLibraryFrame.restoreSavedGameSort(sorter, List.of());
+        assertTrue(sorter.getSortKeys().isEmpty());
+    }
+
     @Test
     public void noMatchMessageOnlyAppearsWhenFiltersExcludeSavedGames() {
         assertTrue(GameLibraryFrame.hasNoSavedGameMatches("unknown", "", 0, 4));
