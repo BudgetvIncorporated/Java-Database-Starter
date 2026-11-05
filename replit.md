@@ -1,45 +1,29 @@
-# [Project name]
+# Game Library
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A school Java/SQLite game-library project with a browser companion and a separate classroom slideshow.
 
-## Run & Operate
+## Open and run
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Select **Game Library** in Preview for the browser app at `/`. It does not require a Run button or desktop/VNC pane.
+- The managed workflows are `artifacts/game-library: web` and `artifacts/api-server: API Server`. Restart these after frontend/backend changes.
+- The slideshow remains a separate artifact at `/game-library-presentation/`.
+- The original Java Swing app remains in `java-database-starter`; its desktop workflow is `Game Library Swing`.
 
-## Stack
+## Data and scope
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Both browser and Java apps use the existing `java-database-starter/game-library.db` SQLite file.
+- Do not replace this with PostgreSQL, reseed it on server startup, or create an empty fallback database.
+- Preserve the approved four tables: genres, games (one genre per game), users, and user_games (rating and play count).
+- Game links open external sites; this is a library manager, not a playable game host.
+- Browser writes and parent deletions affect the same data the Java app uses. Deleting a game/player cascades their saved-game links; removing a saved link leaves both parents intact.
+- Browser access is currently for the workspace demo, without account-based authorization. Do not treat it as a protected public service or publish it without deciding access control and durable SQLite storage.
 
-## Where things live
+## Implementation and checks
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
-
-## Architecture decisions
-
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Browser: `artifacts/game-library`, React/Vite.
+- API: `artifacts/api-server`, Express and Node 24's built-in `node:sqlite`.
+- Contract: `lib/api-spec/openapi.yaml`; regenerate with `pnpm --filter @workspace/api-spec run codegen`.
+- Generated hooks: `@workspace/api-client-react`; validation: `@workspace/api-zod`.
+- `pnpm --filter @workspace/api-server test` exercises CRUD, validation, cascades, and persisted writes against a temporary backup of the real SQLite database, never against the original.
+- `pnpm run typecheck` checks workspace types.
+- `cd java-database-starter && mvn test` checks the unchanged Java app.

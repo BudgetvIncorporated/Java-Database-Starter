@@ -8,3 +8,9 @@ The user is building a game library for a school Java/SQLite assignment. The use
 **Why:** The user confirmed that the SQL should match the diagram, and a later expanded model no longer matched that decision. Opening links is the current, lower-effort direction; hosting playable games would be a separate scope choice.
 
 **How to apply:** Keep future schema and Java persistence changes consistent with the four tables, provide an entry workflow, and show the user/game association. Check the current Java code before running it against the simplified schema, because it may still expect the expanded model. Keep external game links as the default unless the user explicitly chooses to build and run games in the site.
+
+The user approved a browser companion alongside the Java assignment and slideshow because their workspace did not show a Run button or the desktop/VNC pane, despite the Java window running.
+
+**Why:** Repeated instructions to run Swing or look for VNC did not give the user access to the app.
+
+**How to apply:** Make browser Preview the primary user-facing entry point. Do not describe a running native Java window as proof that the user can see or use the app.

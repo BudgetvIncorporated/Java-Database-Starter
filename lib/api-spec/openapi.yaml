@@ -11,6 +11,173 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /library/summary:
+    get:
+      operationId: getLibrarySummary
+      responses:
+        "200":
+          description: Catalog totals
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibrarySummary" }
+  /library/genres:
+    get:
+      operationId: listLibraryGenres
+      responses:
+        "200":
+          description: Genres
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LibraryGenre" }
+  /library/games:
+    get:
+      operationId: listLibraryGames
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: genreId, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Games
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LibraryGame" }
+    post:
+      operationId: createLibraryGame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LibraryGameInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryGame" }
+  /library/games/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: updateLibraryGame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LibraryGameInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryGame" }
+    delete:
+      operationId: deleteLibraryGame
+      responses:
+        "204": { description: Deleted }
+  /library/players:
+    get:
+      operationId: listLibraryPlayers
+      responses:
+        "200":
+          description: Players
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LibraryPlayer" }
+    post:
+      operationId: createLibraryPlayer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LibraryPlayerInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryPlayer" }
+  /library/players/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: updateLibraryPlayer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LibraryPlayerInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibraryPlayer" }
+    delete:
+      operationId: deleteLibraryPlayer
+      responses:
+        "204": { description: Deleted }
+  /library/saved:
+    get:
+      operationId: listLibrarySavedGames
+      responses:
+        "200":
+          description: Saved-game relationships
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LibrarySavedGame" }
+    post:
+      operationId: createLibrarySavedGame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LibrarySavedGameInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibrarySavedGame" }
+  /library/saved/{userId}/{gameId}:
+    parameters:
+      - { name: userId, in: path, required: true, schema: { type: integer } }
+      - { name: gameId, in: path, required: true, schema: { type: integer } }
+    put:
+      operationId: updateLibrarySavedGame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LibrarySavedGameUpdate" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LibrarySavedGame" }
+    delete:
+      operationId: deleteLibrarySavedGame
+      responses:
+        "204": { description: Deleted }
+  /library/statistics:
+    get:
+      operationId: getLibraryStatistics
+      responses:
+        "200":
+          description: Per-player statistics including players without saved games
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LibraryPlayerStats" }
   /healthz:
     get:
       operationId: healthCheck
@@ -26,6 +193,82 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    LibrarySummary:
+      type: object
+      required: [games, players, savedGames, totalPlays, genres]
+      properties:
+        games: { type: integer }
+        players: { type: integer }
+        savedGames: { type: integer }
+        totalPlays: { type: integer }
+        genres: { type: integer }
+    LibraryGenre:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    LibraryGameInput:
+      type: object
+      required: [genreId, title, url, releaseDate]
+      properties:
+        genreId: { type: integer, minimum: 1 }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        url: { type: string, minLength: 1, maxLength: 2000 }
+        releaseDate: { type: string }
+    LibraryGame:
+      allOf:
+        - { $ref: "#/components/schemas/LibraryGameInput" }
+        - type: object
+          required: [id, genreName]
+          properties:
+            id: { type: integer }
+            genreName: { type: string }
+    LibraryPlayerInput:
+      type: object
+      required: [username, email]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 100 }
+        email: { type: string, minLength: 3, maxLength: 254 }
+    LibraryPlayer:
+      allOf:
+        - { $ref: "#/components/schemas/LibraryPlayerInput" }
+        - type: object
+          required: [id]
+          properties:
+            id: { type: integer }
+    LibrarySavedGameUpdate:
+      type: object
+      required: [rating, playCount]
+      properties:
+        rating: { type: [integer, "null"], minimum: 1, maximum: 5 }
+        playCount: { type: integer, minimum: 0, maximum: 2147483647 }
+    LibrarySavedGameInput:
+      allOf:
+        - { $ref: "#/components/schemas/LibrarySavedGameUpdate" }
+        - type: object
+          required: [userId, gameId]
+          properties:
+            userId: { type: integer, minimum: 1 }
+            gameId: { type: integer, minimum: 1 }
+    LibrarySavedGame:
+      allOf:
+        - { $ref: "#/components/schemas/LibrarySavedGameInput" }
+        - type: object
+          required: [username, gameTitle, genreName]
+          properties:
+            username: { type: string }
+            gameTitle: { type: string }
+            genreName: { type: string }
+    LibraryPlayerStats:
+      type: object
+      required: [userId, username, savedGames, totalPlayCount, averageRating]
+      properties:
+        userId: { type: integer }
+        username: { type: string }
+        savedGames: { type: integer }
+        totalPlayCount: { type: integer }
+        averageRating: { type: [number, "null"] }
     HealthStatus:
       type: object
       properties:

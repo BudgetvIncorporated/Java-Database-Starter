@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Game Library"
+description = "Browser Game Library for managing the existing Java project's SQLite catalog, players, saved games, and reports directly in Preview."
+version = "1.0.0"
+id = "artifacts/game-library"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23227
+
+[services.development]
+run = "pnpm --filter @workspace/game-library run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/game-library", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/game-library/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23227"
+BASE_PATH = "/"
