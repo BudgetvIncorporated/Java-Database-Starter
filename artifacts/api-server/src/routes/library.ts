@@ -4,7 +4,7 @@ import {
   UpdateLibrarySavedGameBody, ListLibraryGamesQueryParams,
 } from "@workspace/api-zod";
 import { LibraryStore, gameSelect, playerSelect, savedSelect } from "../lib/library-store";
-import { requireLibraryManagement } from "../lib/library-management";
+import { libraryAccess, type IdentityResolver } from "../lib/library-management";
 
 class HttpError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -52,11 +52,12 @@ function savedInput(body: unknown, creating: boolean) {
   return result.data;
 }
 
-export function createLibraryRouter(store: LibraryStore) {
+export function createLibraryRouter(store: LibraryStore, resolveIdentity?: IdentityResolver) {
   const router = Router();
   const db = store.db;
   router.use((_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
-  router.get("/backup", requireLibraryManagement, async (req, res, next) => {
+  router.use(libraryAccess(resolveIdentity));
+  router.get("/backup", async (req, res, next) => {
     // Express also maps HEAD to GET; don't generate a sensitive export for it.
     if (req.method !== "GET") { res.status(405).end(); return; }
     try {

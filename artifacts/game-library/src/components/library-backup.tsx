@@ -34,7 +34,7 @@ export function LibraryBackup() {
         <div className="font-semibold">Back up before major edits</div>
         <p className="text-muted-foreground text-xs mt-1">
           Download all four tables, including ratings, play counts, and player emails. Keep the file private.
-          {" "}Available in the private workspace demo; public downloads require management access.
+          {" "}Available only to the signed-in library manager.
         </p>
       </div>
       <button type="button" onClick={download} disabled={pending}

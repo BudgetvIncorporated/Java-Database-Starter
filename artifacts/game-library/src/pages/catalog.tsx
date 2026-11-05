@@ -12,6 +12,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { useToast } from "@/hooks/use-toast";
+import { useLibraryAccess } from "@/lib/access";
 import {
   EmptyBlock, ErrorBlock, Field, FormError, PageHeader, RowsSkeleton, SummaryStrip,
   btnGhost, btnIcon, btnPrimary, errorMessage, inputCls, listQuery, useInvalidateLibrary,
@@ -97,6 +98,7 @@ function GameDialog({ open, onOpenChange, game, genres }: { open: boolean; onOpe
 }
 
 export default function CatalogPage() {
+  const { canManage } = useLibraryAccess();
   const { toast } = useToast();
   const invalidate = useInvalidateLibrary();
   const [search, setSearch] = useState("");
@@ -130,7 +132,7 @@ export default function CatalogPage() {
         kicker="Drawer A / Catalog"
         title="The catalog"
         sub="Every game on the shelf. Search by title, narrow by genre, open the link to play."
-        action={<button className={btnPrimary} onClick={() => { setEditing(null); setFormOpen(true); }} data-testid="button-add-game"><Plus className="h-4 w-4" /> Add game</button>}
+        action={canManage && <button className={btnPrimary} onClick={() => { setEditing(null); setFormOpen(true); }} data-testid="button-add-game"><Plus className="h-4 w-4" /> Add game</button>}
       />
       <SummaryStrip />
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
@@ -149,7 +151,7 @@ export default function CatalogPage() {
       {games.isLoading ? <RowsSkeleton /> : games.isError ? <ErrorBlock err={games.error} onRetry={() => games.refetch()} /> : list.length === 0 ? (
         filtered
           ? <EmptyBlock title="No match" body="Nothing in the catalog fits that search and genre." action={<button className={btnGhost} onClick={() => { setSearch(""); setGenre(""); }}>Clear filters</button>} />
-          : <EmptyBlock title="The catalog is empty" body="Add the first game to start the collection." action={<button className={btnPrimary} onClick={() => { setEditing(null); setFormOpen(true); }}>Add game</button>} />
+          : <EmptyBlock title="The catalog is empty" body={canManage ? "Add the first game to start the collection." : "The manager has not added any games yet."} action={canManage && <button className={btnPrimary} onClick={() => { setEditing(null); setFormOpen(true); }}>Add game</button>} />
       ) : (
         <>
           <div className="font-mono text-xs text-muted-foreground mb-2" data-testid="text-games-count">{list.length} card{list.length === 1 ? "" : "s"}{games.isFetching ? " / refreshing" : ""}</div>
@@ -161,10 +163,10 @@ export default function CatalogPage() {
                   <span className="absolute left-0 top-0 bottom-0 w-1 bg-accent" />
                   <div className="flex justify-between items-start gap-2">
                     <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">No. {String(g.id).padStart(3, "0")} / {g.genreName}</span>
-                    <div className="flex -mr-2 -mt-1">
+                    {canManage && <div className="flex -mr-2 -mt-1">
                       <button className={btnIcon} onClick={() => { setEditing(g); setFormOpen(true); }} aria-label="Edit" data-testid={`button-edit-game-${g.id}`}><Pencil className="h-4 w-4" /></button>
                       <button className={btnIcon} onClick={() => { setDelErr(null); setToDelete(g); }} aria-label="Delete" data-testid={`button-delete-game-${g.id}`}><Trash2 className="h-4 w-4" /></button>
-                    </div>
+                    </div>}
                   </div>
                   <h3 className="text-lg font-bold leading-tight mt-1" data-testid={`text-game-title-${g.id}`}>{g.title}</h3>
                   <div className="mt-3 flex items-center justify-between text-sm">

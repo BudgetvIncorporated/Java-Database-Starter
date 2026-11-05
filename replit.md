@@ -16,9 +16,11 @@ A school Java/SQLite game-library project with a browser companion and a separat
 - Preserve the approved four tables: genres, games (one genre per game), users, and user_games (rating and play count).
 - Game links open external sites; this is a library manager, not a playable game host.
 - Browser writes and parent deletions affect the same data the Java app uses. Deleting a game/player cascades their saved-game links; removing a saved link leaves both parents intact.
-- Browser access is currently for the workspace demo, without account-based authorization. Do not treat it as a protected public service or publish it without deciding access control and durable SQLite storage.
+- The browser catalog, summary, genres, and statistics are public read-only. All mutations, player details, saved-game records, and backups require the approved manager's Clerk sign-in.
+- `LIBRARY_MANAGER_EMAIL` configures the sole manager in each environment. The API checks a verified email from Clerk, never a library player email or browser-provided role. An unset value denies all management. Sign-ups do not grant access.
+- Development and production use separate Clerk identities; the owner must verify their configured email in each environment. Durable SQLite storage still needs a decision before public deployment.
 - Backup downloads include player emails. `/api/library/backup` uses SQLite's online backup API, transfers a private temporary file, then deletes it. Nothing is retained server-side or written into the repository.
-- Until authenticated management access exists, backups fail closed outside `NODE_ENV=development` and require same-origin browser Fetch Metadata. This is a workspace-demo boundary, not user authentication; management-policy changes must update the backup guard too.
+- Management operations and backups require same-origin browser Fetch Metadata as well as manager authorization. Clerk cookies authenticate same-origin web requests; do not add browser bearer tokens.
 
 ## Implementation and checks
 

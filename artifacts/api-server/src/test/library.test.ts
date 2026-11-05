@@ -7,6 +7,16 @@ import { DatabaseSync, backup } from "node:sqlite";
 import express from "express";
 import { createLibraryRouter } from "../routes/library";
 import { findLibraryDatabase, LibraryStore } from "../lib/library-store";
+import { isManagerEmail } from "../lib/library-management";
+
+test("only an explicitly configured, verified Clerk email qualifies as manager", () => {
+  const verified = { emailAddress: "owner@example.com", verification: { status: "verified" } };
+  assert(isManagerEmail([verified], " OWNER@example.com "));
+  assert(!isManagerEmail([verified], ""));
+  assert(!isManagerEmail([verified], "someone@example.com"));
+  assert(!isManagerEmail([{ ...verified, verification: { status: "unverified" } }], "owner@example.com"));
+  assert(!isManagerEmail([{ ...verified, verification: null }], "owner@example.com"));
+});
 
 test("browser API uses the existing SQLite model with CRUD, validation, cascades, and persistence", async (t) => {
   const directory = mkdtempSync(join(tmpdir(), "game-library-data-"));
@@ -17,7 +27,9 @@ test("browser API uses the existing SQLite model with CRUD, validation, cascades
   const store = new LibraryStore(databasePath);
   const app = express();
   app.use(express.json());
-  app.use("/api/library", createLibraryRouter(store));
+  // Inject the identity boundary only in tests; HTTP input cannot inject it in the app.
+  let identity = { signedIn: true, canManage: true };
+  app.use("/api/library", createLibraryRouter(store, async () => identity));
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const address = server.address();
@@ -26,7 +38,7 @@ test("browser API uses the existing SQLite model with CRUD, validation, cascades
   // HTTP responses are intentionally untyped here: assertions check the actual wire payload.
   async function request(method: string, path: string, body?: unknown, status = 200): Promise<any> {
     const response = await fetch(`${base}${path}`, {
-      method, headers: { "Content-Type": "application/json" },
+      method, headers: { "Content-Type": "application/json", "Sec-Fetch-Site": "same-origin" },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const data = response.status === 204 ? undefined : await response.json();
@@ -37,6 +49,26 @@ test("browser API uses the existing SQLite model with CRUD, validation, cascades
   let userId = 0;
   let secondUserId = 0;
   try {
+    await t.test("anonymous and signed-in viewers cannot manage or see private records", async () => {
+      const before = store.db.prepare("SELECT COUNT(*) AS count FROM games").get();
+      for (const signedIn of [false, true]) {
+        identity = { signedIn, canManage: false };
+        for (const [method, path] of [
+          ["POST", "/games"], ["PUT", "/games/1"], ["DELETE", "/games/1"],
+          ["POST", "/players"], ["PUT", "/players/1"], ["DELETE", "/players/1"],
+          ["POST", "/saved"], ["PUT", "/saved/1/1"], ["DELETE", "/saved/1/1"],
+          ["GET", "/players"], ["GET", "/saved"], ["GET", "/backup"], ["HEAD", "/backup"],
+        ]) {
+          const response = await fetch(`${base}${path}`, { method, headers: { "Sec-Fetch-Site": "same-origin" } });
+          assert.equal(response.status, signedIn ? 403 : 401, `${method} ${path}`);
+          assert.equal(response.headers.get("cache-control"), "no-store");
+        }
+        for (const path of ["/games", "/genres", "/summary", "/statistics"]) await request("GET", path);
+        assert.deepEqual(await request("GET", "/access"), identity);
+      }
+      identity = { signedIn: true, canManage: true };
+      assert.deepEqual(store.db.prepare("SELECT COUNT(*) AS count FROM games").get(), before);
+    });
     const genres = await request("GET", "/genres");
     assert(genres.length > 0);
     const genreId = genres[0].id;
@@ -107,28 +139,13 @@ test("browser API uses the existing SQLite model with CRUD, validation, cascades
         assert(reopened.db.prepare("SELECT title FROM games WHERE game_id = ?").get(gameId));
       } finally { reopened.db.close(); }
     });
-    await t.test("backup access fails closed without private-workspace management access", async () => {
-      const previous = process.env.NODE_ENV;
-      try {
-        for (const environment of ["production", "test", undefined]) {
-          if (environment === undefined) delete process.env.NODE_ENV;
-          else process.env.NODE_ENV = environment;
-          const response = await fetch(`${base}/backup`, { headers: { "Sec-Fetch-Site": "same-origin" } });
-          assert.equal(response.status, 403);
-          assert.equal(response.headers.get("cache-control"), "no-store");
-          assert.equal(response.headers.get("content-disposition"), null);
-          const data = await response.json() as { error: string };
-          assert.match(data.error, /management access/);
-        }
-        process.env.NODE_ENV = "development";
+    await t.test("manager access still rejects cross-site management requests", async () => {
         for (const site of [undefined, "cross-site", "same-site", "none"]) {
-          const response = await fetch(`${base}/backup`, { headers: site ? { "Sec-Fetch-Site": site } : {} });
-          assert.equal(response.status, 403);
+          for (const [path, method] of [["/backup", "GET"], ["/games", "POST"]]) {
+            const response = await fetch(`${base}${path}`, { method, headers: site ? { "Sec-Fetch-Site": site } : {} });
+            assert.equal(response.status, 403);
+          }
         }
-      } finally {
-        if (previous === undefined) delete process.env.NODE_ENV;
-        else process.env.NODE_ENV = previous;
-      }
     });
     await t.test("download opens standalone with four intact tables and committed WAL data, without changing the live database", async () => {
       const previous = process.env.NODE_ENV;

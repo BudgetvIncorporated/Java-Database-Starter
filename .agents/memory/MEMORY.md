@@ -1,2 +1,3 @@
 - [Game library schema scope](game-library-scope.md) — Keep the approved model to Games, Genres, Users, and UserGames unless the user or teacher changes it.
 - [Browser evaluation isolation](browser-evaluation.md) — tsx-transformed closures can reference helpers absent in the browser; keep browser-side checks self-contained.
+- [Library access policy](library-access-policy.md) — Public catalog/statistics, owner-only management; player records never establish identity.

@@ -38,3 +38,8 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+LIBRARY_MANAGER_EMAIL = "jtasgangtvofficial@gmail.com"

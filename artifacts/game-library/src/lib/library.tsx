@@ -5,6 +5,8 @@ import { AlertTriangle, BarChart3, BookMarked, Library, RotateCw, Users } from "
 import { useGetLibrarySummary } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LibraryBackup } from "@/components/library-backup";
+import { useLibraryAccess } from "@/lib/access";
+import { useAuth, useClerk } from "@clerk/react";
 
 export const listQuery = { staleTime: 30_000, refetchOnWindowFocus: true } as const;
 
@@ -37,6 +39,9 @@ const nav = [
 
 export function Shell({ children }: { children: ReactNode }) {
   const [loc] = useLocation();
+  const { canManage } = useLibraryAccess();
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   return (
     <div className="min-h-[100dvh] flex flex-col md:flex-row">
       <aside className="md:w-60 md:min-h-[100dvh] bg-sidebar text-sidebar-foreground md:sticky md:top-0 md:self-start flex md:flex-col">
@@ -47,7 +52,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex md:flex-col gap-1 px-2 md:px-3 overflow-x-auto items-center md:items-stretch flex-1">
-          {nav.map((n) => {
+          {nav.filter((n) => canManage || !["/players", "/saved"].includes(n.href)).map((n) => {
             const active = n.href === "/" ? loc === "/" : loc.startsWith(n.href);
             return (
               <Link
@@ -71,7 +76,13 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </aside>
       <main className="flex-1 min-w-0 px-4 sm:px-8 lg:px-12 py-6 md:py-10 max-w-[1280px]">
-        <LibraryBackup />
+        <div className="mb-5 flex flex-wrap justify-between gap-3 text-sm">
+          <span>{canManage ? "Manager access" : "Public read-only catalog"}</span>
+          {isSignedIn
+            ? <button className="underline" onClick={() => signOut({ redirectUrl: import.meta.env.BASE_URL })}>Sign out</button>
+            : <Link className="underline" href="/sign-in">Manager sign-in</Link>}
+        </div>
+        {canManage && <LibraryBackup />}
         {children}
       </main>
     </div>
