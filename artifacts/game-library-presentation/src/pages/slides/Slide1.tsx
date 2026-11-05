@@ -3,7 +3,7 @@ const base = import.meta.env.BASE_URL;
 export default function Slide1() {
   return (
     <div className="w-screen h-screen overflow-hidden relative deck-frame">
-      <div className="absolute inset-y-0 right-0 w-[54vw] overflow-hidden">
+      <div className="absolute inset-y-0 right-0 w-[54vw] overflow-hidden" data-layout-reserved="cover illustration">
         <img
           src={`${base}game-library-cover.png`}
           crossOrigin="anonymous"
@@ -12,7 +12,7 @@ export default function Slide1() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[#f2f6ec] via-[#f2f6ec]/35 to-transparent" />
       </div>
-      <div className="absolute left-[7vw] top-[16vh] z-10 w-[53vw]">
+      <div className="absolute left-[7vw] top-[16vh] z-10 w-[53vw]" data-layout-content="cover copy">
         <div className="mb-[3vh] h-[1.2vh] w-[8vw] rounded-full bg-[#b9df74]" />
         <h1 className="max-w-[50vw] font-display text-[6vw] font-bold leading-[.98] tracking-[-.06em] text-[#183329]">
           Java SQLite Game Library

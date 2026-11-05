@@ -1,10 +1,10 @@
 export default function Slide8() {
   return (
     <div className="w-screen h-screen overflow-hidden relative green-surface">
-      <div className="absolute right-0 top-0 h-[100vh] w-[32vw] bg-[#b9df74]" />
+      <div className="absolute right-0 top-0 h-[100vh] w-[32vw] bg-[#b9df74]" data-layout-reserved="right accent panel" />
       <div className="relative px-[7vw] pt-[8vh]">
-        <h1 className="deck-title max-w-[70vw] text-[#f2f6ec]">Five-minute app walkthrough</h1>
-        <ul className="deck-copy mt-[5vh] flex max-w-[80vw] flex-col gap-[2.65vh] text-[#f2f6ec]">
+        <h1 className="deck-title max-w-[70vw] text-[#f2f6ec]" data-layout-content="title">Five-minute app walkthrough</h1>
+        <ul className="deck-copy mt-[5vh] flex max-w-[80vw] flex-col gap-[2.65vh] text-[#f2f6ec]" data-layout-content="demo steps">
           <li>Search for a game and filter by genre</li>
           <li>Sort titles with the Java insertion-sort button</li>
           <li>Show the three-table JOIN and COUNT/SUM/AVG report</li>

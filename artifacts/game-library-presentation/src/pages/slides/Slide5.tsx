@@ -3,9 +3,9 @@ export default function Slide5() {
     <div className="w-screen h-screen overflow-hidden relative deck-frame">
       <div className="absolute bottom-0 right-0 h-[27vh] w-[36vw] rounded-tl-[12vw] bg-[#b9df74]" />
       <div className="relative px-[7vw] pt-[8vh]">
-        <h1 className="deck-title max-w-[78vw]">What the database answers</h1>
+        <h1 className="deck-title max-w-[78vw]" data-layout-content="title">What the database answers</h1>
         <div className="mt-[6vh] grid grid-cols-[1.2fr_.8fr] gap-[5vw]">
-          <ul className="deck-copy flex flex-col gap-[3.1vh]">
+          <ul className="deck-copy flex flex-col gap-[3.1vh]" data-layout-content="database examples">
             <li>Which players saved each game? JOIN user_games, games, and users</li>
             <li>How many games and plays does each user have? GROUP BY user</li>
             <li>The report uses COUNT for games, SUM for plays, and AVG for ratings</li>
